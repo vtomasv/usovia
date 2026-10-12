@@ -3,7 +3,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  Download,
   ShieldCheck,
   Sparkles,
   Users,
@@ -13,9 +12,11 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import './landing.css';
+import { DesktopDownload } from './components/desktop-download';
+import type { Config } from './types';
 
 type Props = {
-  config: { downloadUrl: string | null; downloadVersion?: string; centralReady?: boolean };
+  config: Config;
   onLogin: () => void;
 };
 const journey = [
@@ -362,18 +363,7 @@ export function Landing({ config, onLogin }: Props) {
               </div>
             ))}
           </div>
-          {config.downloadUrl ? (
-            <a className="es-primary" href={config.downloadUrl}>
-              <Download size={18} /> Descargar Usovia {config.downloadVersion}{' '}
-              <ArrowUpRight size={16} />
-            </a>
-          ) : (
-            <p>Solicita el instalador al equipo responsable de IA de tu empresa.</p>
-          )}
-          <small className="es-install-note">
-            macOS · Apple Silicon. El paquete actual requiere validación con TI: no tiene firma
-            Developer ID ni notarización.
-          </small>
+          <DesktopDownload config={config} />
           {config.centralReady === false && (
             <small>
               El espacio corporativo está en preparación. El chat local puede utilizarse sin

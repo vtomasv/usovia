@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { DesktopDownload } from './components/desktop-download';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -495,29 +496,12 @@ export function App() {
               <div className="install-layout">
                 <section className="panel install-card">
                   <img src="/mark.svg" alt="" />
-                  <h2>Usovia para macOS</h2>
+                  <h2>Usovia en tu computador</h2>
                   <p>
-                    Cliente para Apple Silicon, con motor local incluido y permisos de participación
-                    desactivados al comenzar.
+                    Elige el instalador compatible. El cliente incluye el motor local y conserva tus
+                    permisos desactivados hasta que decidas colaborar.
                   </p>
-                  {config.downloadUrl ? (
-                    <a className="primary" href={config.downloadUrl}>
-                      <Download size={17} />
-                      Descargar Usovia {config.downloadVersion}
-                    </a>
-                  ) : (
-                    <div className="notice small">
-                      <Info size={18} />
-                      <p>
-                        El paquete del cliente se prepara por separado. El administrador debe
-                        configurar su enlace de descarga para habilitar este botón.
-                      </p>
-                    </div>
-                  )}
-                  <small>
-                    Paquete sin notarización. Instala únicamente desde la fuente acordada con el
-                    administrador de tu empresa.
-                  </small>
+                  <DesktopDownload config={config} />
                   <div className="hub-address">
                     <span>Servidor para activar la cuenta</span>
                     <code>{config.hubUrl || window.location.origin}</code>
@@ -570,8 +554,9 @@ export function App() {
                   navegador de Usovia y API/CLI configuradas con su proxy TLS. Los proveedores y
                   rutas de generación se habilitan en la central. Los navegadores que usan proxy y
                   certificados de macOS pueden integrarse con autorización local en el cliente 1.1.
-                  La captura web está disponible para Gemini; ChatGPT y Claude web requieren
-                  adaptadores adicionales.
+                  Windows ofrece Gemini dentro de Usovia y API/CLI configuradas; todavía no integra
+                  los demás navegadores del sistema. La captura web está disponible para Gemini;
+                  ChatGPT y Claude web requieren adaptadores adicionales.
                 </p>
               </div>
             </>

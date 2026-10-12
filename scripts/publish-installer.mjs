@@ -2,6 +2,7 @@ import {config} from 'dotenv';
 import {spawn} from 'node:child_process';
 import {readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {desktopReleases} from '../shared/release.mjs';
 const parsed=config({path:'.runtime/blob.env',quiet:true}).parsed;
 if(!parsed?.BLOB_READ_WRITE_TOKEN)throw new Error('Recupera la credencial del almacén de instaladores en .runtime/blob.env.');
 const {version}=JSON.parse(await readFile('desktop/package.json','utf8'));
@@ -22,5 +23,7 @@ const output=await new Promise((resolve,reject)=>{
 });
 const url=output.match(/https:\/\/[^\s"<>]+\.public\.blob\.vercel-storage\.com\/[^\s"<>]+\.dmg/)?.[0];
 if(!url)throw new Error('La publicación terminó pero no se pudo obtener la URL. Consulta el almacén antes de volver a publicar.');
-await writeFile('shared/release.mjs',`// Public release metadata; never contains credentials.\nexport const desktopRelease=${JSON.stringify({url,sha256,version,platform:'macOS Apple Silicon',signed:false},null,2)};\n`);
+const release={id:'macos-arm64',os:'macos',arch:'arm64',url,sha256,version,platform:'macOS Apple Silicon',signed:false,systemBrowser:true};
+const releases=[...desktopReleases.filter(r=>r.id!==release.id),release];
+await writeFile('shared/release.mjs',`// Public release metadata; never contains credentials.\nexport const desktopReleases=${JSON.stringify(releases,null,2)};\nexport const desktopRelease=desktopReleases.find(release=>release.id==='macos-arm64');\n`);
 console.log('Instalador publicado:',url);console.log('SHA-256:',sha256);

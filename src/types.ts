@@ -49,6 +49,18 @@ export type Overview = {
   }[];
   totals: { accounts: number; events: number; redactions: number };
 };
+export type DesktopArtifact = {
+  id: string;
+  os: 'macos' | 'windows';
+  arch: 'arm64' | 'x64';
+  platform: string;
+  version: string;
+  url: string;
+  sha256?: string | null;
+  bytes?: number;
+  signed: boolean;
+  systemBrowser?: boolean;
+};
 export type Config = {
   organization: string;
   downloadUrl: string | null;
@@ -56,4 +68,5 @@ export type Config = {
   centralReady?: boolean;
   downloadSha256?: string | null;
   downloadVersion?: string;
+  desktopReleases?: DesktopArtifact[];
 };

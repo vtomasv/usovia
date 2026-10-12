@@ -1,7 +1,8 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import {HubService,ApiError} from './service.mjs';
 import {getStore} from './store.mjs';
-import {desktopRelease} from '../shared/release.mjs';
+import {desktopRelease,desktopReleases} from '../shared/release.mjs';
+import {configuredReleases} from '../shared/downloads.mjs';
 import {ExportService} from './analytics/export.mjs';
 const COOKIE='usovia_admin';
 const eq=(a,b)=>{const x=Buffer.from(a||''),y=Buffer.from(b||'');return x.length===y.length&&timingSafeEqual(x,y);};
@@ -29,7 +30,10 @@ export async function handle(req,res,providedService,onSemanticWork){
     const url=new URL(req.url,'http://localhost');
     const route=(req.query?.path??url.searchParams.get('path')??url.pathname.replace(/^\/api\/?/,''));
     if(route==='health'){const ready=!!process.env.DATABASE_URL||!process.env.VERCEL;return send(ready?200:503,{ok:ready,storage:process.env.DATABASE_URL?'postgres':process.env.VERCEL?'missing':'local',version:'1.2.0',capabilities:['usage_analytics','semantic_index','private_semantic_cpu','parquet_exports']});}
-    if(route==='config')return send(200,{organization:process.env.ORGANIZATION_NAME||'Gobierno corporativo de IA',downloadUrl:process.env.DESKTOP_DOWNLOAD_URL||desktopRelease.url,downloadSha256:desktopRelease.sha256,downloadVersion:desktopRelease.version,hubUrl:process.env.PUBLIC_HUB_URL||null,channels:['Chat de Usovia','API local compatible','Gemini web en Usovia','API y CLI con proxy TLS'],analysisMethod:'Reglas explicables · CPU',centralReady:(!process.env.VERCEL||!!process.env.DATABASE_URL)&&!!process.env.ADMIN_PASSWORD&&!!process.env.SESSION_SECRET});
+    if(route==='config'){
+      const releases=configuredReleases(desktopReleases,process.env.DESKTOP_DOWNLOAD_URL);
+      return send(200,{organization:process.env.ORGANIZATION_NAME||'Gobierno corporativo de IA',desktopReleases:releases,downloadUrl:releases.find(r=>r.id==='macos-arm64')?.url||null,downloadSha256:releases.find(r=>r.id==='macos-arm64')?.sha256||null,downloadVersion:desktopRelease.version,hubUrl:process.env.PUBLIC_HUB_URL||null,channels:['Chat de Usovia','API local compatible','Gemini web en Usovia','API y CLI con proxy TLS'],analysisMethod:'Reglas explicables · CPU',centralReady:(!process.env.VERCEL||!!process.env.DATABASE_URL)&&!!process.env.ADMIN_PASSWORD&&!!process.env.SESSION_SECRET});
+    }
     const method=req.method||'GET';
     if(method!=='GET'&&method!=='HEAD'){
       // Admin browser requests are same-origin; desktop endpoints use scoped bearer credentials.

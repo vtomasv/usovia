@@ -1,0 +1,179 @@
+.desktop-download {
+  text-align: left;
+  max-width: 670px;
+  margin: 26px auto;
+  color: #294236;
+}
+.dd-detected {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  margin-bottom: 16px;
+  color: #526849;
+}
+.dd-local-hint {
+  margin-left: auto;
+  font-size: 10px;
+  color: #75836b;
+}
+.dd-platforms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.dd-platforms button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 17px 15px;
+  background: #f8fbf2;
+  border: 1px solid #cfdbc1;
+  border-radius: 12px;
+  color: #506647;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  min-height: 96px;
+}
+.dd-platforms button:hover {
+  border-color: #66854c;
+  background: #fff;
+}
+.dd-platforms button[aria-pressed='true'] {
+  border: 2px solid #4f7235;
+  padding: 16px 14px;
+  background: #fff;
+  box-shadow: 0 3px 12px #3653210a;
+}
+.dd-platforms button:focus-visible,
+.dd-download-button:focus-visible {
+  outline: 3px solid #86a760;
+  outline-offset: 3px;
+}
+.dd-platforms button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.dd-platforms strong,
+.dd-platforms small {
+  display: block;
+}
+.dd-platforms strong {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.dd-platforms small {
+  font-size: 10px;
+}
+.dd-recommended {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  color: #507b33;
+}
+.dd-selected {
+  background: #ffffffa6;
+  border: 1px solid #d6e2c9;
+  border-radius: 12px;
+  padding: 22px;
+  margin-top: 12px;
+}
+.dd-selected h3 {
+  font-size: 17px;
+  margin: 0 0 10px;
+  letter-spacing: -0.3px;
+}
+.dd-selected > p {
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 0 0 16px;
+  color: #66785a;
+}
+.desktop-download .dd-download-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  background: #294e35;
+  color: #fff;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 550;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.desktop-download .dd-download-button:hover {
+  background: #356343;
+}
+.dd-file-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 11px 0 18px;
+  font-size: 9px;
+  color: #718367;
+}
+.dd-selected > .dd-signing,
+.dd-selected > .dd-coverage {
+  font-size: 10px;
+  line-height: 1.7;
+  margin: 10px 0;
+}
+.dd-compatibility {
+  font-size: 11px;
+  line-height: 1.8;
+  background: #f0f4e7;
+  border-radius: 7px;
+  padding: 10px 12px;
+  color: #64734f;
+}
+.dd-selected > .dd-compatibility {
+  font-size: 11px;
+}
+.dd-integrity {
+  border-top: 1px solid #e0e7d6;
+  padding-top: 12px;
+  margin-top: 15px;
+  font-size: 10px;
+  color: #637358;
+}
+.dd-integrity summary {
+  cursor: pointer;
+}
+.dd-integrity code {
+  display: block;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+  margin-top: 10px;
+  font-size: 9px;
+}
+@media (max-width: 500px) {
+  .dd-platforms button {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 20px 12px 13px;
+  }
+  .dd-platforms button[aria-pressed='true'] {
+    padding: 19px 11px 12px;
+  }
+  .dd-selected {
+    padding: 17px;
+  }
+  .dd-local-hint {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dd-download-button {
+    transition: none;
+  }
+}

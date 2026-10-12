@@ -4,12 +4,12 @@
 
 Usovia conecta el aprendizaje cotidiano de los colaboradores con recomendaciones y oportunidades para su organización. Incluye un cliente de escritorio con IA local y un Hub corporativo. La participación es voluntaria y los permisos se autorizan por separado.
 
-[Visitar Usovia](https://usovia-hub-demo.vercel.app) · [Presentar la central 1.2](docs/product-demo.md) · [Alcance del cliente 1.1](docs/version-1.1.md) · [CI y publicación manual](docs/deployment.md)
+[Visitar Usovia](https://usovia-hub-demo.vercel.app) · [Presentar la central 1.2](docs/product-demo.md) · [Cliente macOS](docs/version-1.1.md) · [Cliente Windows e instaladores](docs/windows.md) · [CI y publicación manual](docs/deployment.md)
 
 ## Qué incluye
 
-- Landing para colaboradores: recorrido educativo, permisos, instalación y oportunidades de aprendizaje.
-- Cliente Electron para macOS Apple Silicon, motor Ollama incluido, icono en barra de menús y ventana que puede cerrarse sin finalizar la aplicación.
+- Landing para colaboradores: recorrido educativo, permisos, instalación y oportunidades de aprendizaje; sugiere el paquete Mac o Windows mediante detección local del sistema y permite elegirlo manualmente.
+- Cliente Electron para macOS Apple Silicon y Windows x64, con motor Ollama incluido, icono en barra de menús/bandeja y ventana que puede cerrarse sin finalizar la aplicación. El paquete Windows usa CPU.
 - Captura autorizada de solicitudes y, con permiso adicional, respuestas; texto redactado y recomendaciones mediante reglas ligeras en CPU.
 - Proxy TLS selectivo para proveedores del catálogo admitido. La central configura proveedores y rutas de generación; no habilita la captura del participante remotamente.
 - Dashboard de inteligencia de uso: categorías, procesos recurrentes, cobertura de captura y resultados con evidencia.
@@ -64,13 +64,13 @@ npm test
 npm run build
 ```
 
-En Linux, se omiten explícitamente dos pruebas que requieren el servicio y el ayudante nativos de macOS; las otras 82 validan lógica, API, permisos, sesiones y proxy TLS. En macOS, compílalo antes de las pruebas con `npm run build:browser-helper --workspace @usovia/desktop`.
+En Linux, se omiten explícitamente dos pruebas que requieren el servicio y el ayudante nativos de macOS; las demás validan lógica, API, permisos, sesiones y proxy TLS. En macOS, compílalo antes de las pruebas con `npm run build:browser-helper --workspace @usovia/desktop`.
 
 Para infraestructura propia, el worker se instala y opera por separado dentro del entorno privado de la empresa. Consulta [arquitectura, calidad, operación y esquema Parquet](docs/analytics.md) y [su configuración](analytics-worker/README.md). La central 1.2 está publicada en el demo de Vercel; el repositorio no cambia automáticamente el despliegue público. Las sesiones de demostración están etiquetadas y usan respuestas de un modelo local. La demo procesa nuevas sesiones mediante una función CPU protegida de Vercel; también admite un worker en infraestructura privada.
 
 ## Cliente de escritorio
 
-Requiere macOS arm64 y Xcode Command Line Tools. El runtime y los modelos no están en Git. Prepara el motor desde una instalación oficial conservando avisos y licencias:
+Para empaquetar macOS se requiere arm64 y Xcode Command Line Tools. Windows se compila y verifica en un runner nativo, y se publica en GitHub Releases con hashes y evidencia de instalación/inferencia; consulta [el pipeline y sus límites](docs/windows.md). El runtime y los modelos no están en Git. Prepara el motor desde una instalación oficial conservando avisos y licencias:
 
 ```sh
 node scripts/bundle-runtime.mjs '/Applications/Ollama.app/Contents/Resources'

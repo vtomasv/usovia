@@ -9,7 +9,7 @@ El repositorio público es [vtomasv/usovia](https://github.com/vtomasv/usovia). 
 3. En la máquina autenticada y vinculada al proyecto correcto, ejecuta `npm run deploy`. El script `predeploy` comprueba formato, tipos y pruebas. El build de Vercel vuelve a validar tipos y pruebas antes de publicar.
 4. Verifica la URL de producción, `/api/health`, el acceso administrativo y la descarga. Un despliegue fallido conserva el anterior. Para revertir, promueve una versión anterior desde Vercel y revierte el commit mediante una nueva confirmación revisable.
 
-En Linux se ejecutan 82 pruebas y se omiten explícitamente las dos que requieren macOS. En el Mac con ayudante compilado se ejecutan las 84. El runner elimina las credenciales de servicios heredadas y falla si faltan los archivos de prueba.
+La suite omite explícitamente las dos pruebas del ayudante macOS en Linux/Windows y la ejecución de cmd en macOS/Linux. Cada runner ejecuta las pruebas compatibles y reporta esas omisiones. El runner elimina las credenciales de servicios heredadas y falla si faltan los archivos de prueba.
 
 El cliente de escritorio se empaqueta y publica por separado. Un push o despliegue del Hub no genera ni firma un instalador.
 
@@ -42,8 +42,12 @@ Las variables heredadas del proyecto incluyen acceso a producción en otros ento
 
 ## Distribución de escritorio
 
-La versión actual es macOS Apple Silicon sin firma Developer ID ni notarización. No hay build automático de Windows/Linux ni publicación automática de una CA. La nueva autorización gráfica de navegadores requiere todavía una validación completa en un Mac desbloqueado. Antes de distribución gestionada, firma/notariza y sustituye el ayudante heredado por un servicio macOS moderno.
+Se distribuyen macOS Apple Silicon sin firma Developer ID/notarización y Windows x64 sin Authenticode. Windows se compila y publica mediante el workflow nativo bajo demanda; no hay distribución Linux ni publicación automática de una CA. La nueva autorización gráfica de navegadores requiere todavía una validación completa en un Mac desbloqueado. Antes de distribución gestionada, firma/notariza y sustituye el ayudante heredado por un servicio macOS moderno.
 
 ## Procesamiento semántico
 
 La demo incluye una función CPU protegida de Vercel para procesamiento bajo demanda. La ingesta y las consultas del dashboard solicitan ejecución de la cola; no necesita un computador personal encendido. Como alternativa, el worker independiente requiere un host persistente privado con la revisión de modelo aprobada y acceso al mismo PostgreSQL/tenant del Hub. Consulta [operación analítica](analytics.md). Los vínculos semánticos siempre esperan embeddings reales; se informa la cobertura y los pendientes. La función privada necesita sus dependencias CPU, presupuesto de ejecución y salida para descargar los activos públicos aprobados; nunca envía texto a una API de inferencia externa. La central 1.2 se publicó y verificó mediante sus APIs autenticadas en producción. El recorrido con cuentas controladas comprobó ingesta, recomendaciones, embeddings locales y Parquet. La presentación y el control del worker se describen en [demostración del producto](product-demo.md).
+
+## Instalador Windows
+
+El workflow separado `Windows installer` se ejecuta bajo demanda. Compila NSIS, instala el paquete en Windows, comprueba DPAPI, bandeja y una inferencia local real, y publica en GitHub Releases solo después del éxito. No utiliza secretos de Vercel ni cambia su integración Git. La web conserva los paquetes de Mac y Windows por separado en `shared/release.mjs`. Consulta [distribución Windows](windows.md).
