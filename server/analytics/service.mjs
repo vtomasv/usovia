@@ -151,7 +151,11 @@ export class AnalyticsService {
       solutions,
       sessions: sessions.slice(0, 100).map(sessionSummary),
       sessionListOmitted: Math.max(0, total - 100),
-      semantic: { ...semanticGraph(sessions, snapshot.documents), worker: snapshot.worker },
+      semantic: {
+        ...semanticGraph(sessions, snapshot.documents),
+        executionMode: process.env.VERCEL ? 'vercel_on_demand' : 'private_worker',
+        worker: snapshot.worker,
+      },
       facets: {
         departments: [...new Set(snapshot.state.accounts.map((a) => a.department))].sort(),
         offices: [...new Set(snapshot.state.accounts.map((a) => a.office))].sort(),
@@ -230,15 +234,13 @@ export class AnalyticsService {
     const after = Number(input.afterTurn || 0);
     if (!Number.isSafeInteger(after) || after < 0) fail(400, 'Cursor inválido.');
     const remaining = session.turns.filter((t) => (t.turnIndex || 1) > after),
-      turns = remaining
-        .slice(0, 25)
-        .map((t) => ({
-          ...t,
-          redactedText: redact(t.redactedText).text,
-          ...(typeof t.redactedResponse === 'string'
-            ? { redactedResponse: redact(t.redactedResponse).text }
-            : {}),
-        }));
+      turns = remaining.slice(0, 25).map((t) => ({
+        ...t,
+        redactedText: redact(t.redactedText).text,
+        ...(typeof t.redactedResponse === 'string'
+          ? { redactedResponse: redact(t.redactedResponse).text }
+          : {}),
+      }));
     return {
       session: sessionSummary(session),
       version: session.snapshotHash,

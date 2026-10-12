@@ -160,9 +160,11 @@ function SemanticMap({ graph, onOpen }: { graph: Graph; onOpen: (key: string) =>
             <Network size={40} />
             <h3>
               {graph.totalSessions
-                ? graph.worker?.recent
-                  ? 'El worker privado prepara el índice'
-                  : 'El índice espera al worker privado'
+                ? graph.executionMode === 'vercel_on_demand'
+                  ? 'Preparando el índice en Vercel'
+                  : graph.worker?.recent
+                    ? 'El worker privado prepara el índice'
+                    : 'El índice espera al worker privado'
                 : 'Las relaciones comienzan con el primer aporte'}
             </h3>
             <p>
@@ -589,7 +591,11 @@ export function AnalyticsDashboard({
               <div className="analytics-panel-title">
                 <div>
                   <h2>Intenciones similares, aprendizajes compartidos</h2>
-                  <p>Embeddings multilingües calculados por el worker privado.</p>
+                  <p>
+                    {data.semantic.executionMode === 'vercel_on_demand'
+                      ? 'Modelo propio en CPU dentro del backend privado de Vercel.'
+                      : 'Embeddings multilingües calculados por el worker privado.'}
+                  </p>
                 </div>
                 <span className="index-coverage">
                   {data.semantic.indexedSessions} / {data.semantic.totalSessions} sesiones indexadas
@@ -597,9 +603,11 @@ export function AnalyticsDashboard({
               </div>
               <SemanticMap graph={data.semantic} onOpen={onOpenConversation} />
               <div className="analytics-note">
-                {data.semantic.worker
-                  ? `Último reporte del worker: ${new Date(data.semantic.worker.lastSeen).toLocaleString('es-CL')}. ${data.semantic.worker.recent ? 'Reporte reciente.' : 'Sin reporte reciente; comprueba el servicio privado.'}`
-                  : 'Aún no hay reportes de un worker privado.'}{' '}
+                {data.semantic.executionMode === 'vercel_on_demand'
+                  ? 'Procesamiento bajo demanda en Vercel: no requiere un computador encendido. '
+                  : data.semantic.worker
+                    ? `Último reporte del worker: ${new Date(data.semantic.worker.lastSeen).toLocaleString('es-CL')}. ${data.semantic.worker.recent ? 'Reporte reciente.' : 'Sin reporte reciente; comprueba el servicio privado.'}`
+                    : 'Aún no hay reportes de un worker privado.'}{' '}
                 Modelo: {data.semantic.model}. Se muestran {data.semantic.visibleSessions} sesiones.
                 {data.semantic.omittedNodes > 0
                   ? ` ${data.semantic.omittedNodes} nodos adicionales no se dibujan: reduce el rango o aplica filtros.`

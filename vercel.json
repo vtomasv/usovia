@@ -2,8 +2,12 @@
   "framework": "vite",
   "buildCommand": "npm run check && npm test && npm run build",
   "outputDirectory": "dist",
-  "installCommand": "ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci",
+  "installCommand": "ELECTRON_SKIP_BINARY_DOWNLOAD=1 ONNXRUNTIME_NODE_INSTALL=skip npm ci",
   "rewrites": [
+    {
+      "source": "/internal/semantic",
+      "destination": "/api/semantic"
+    },
     {
       "source": "/api/:path*",
       "destination": "/api/index?path=:path*"
@@ -35,5 +39,14 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": false
+  },
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 60
+    },
+    "api/semantic.ts": {
+      "maxDuration": 60,
+      "excludeFiles": "node_modules/onnxruntime-node/bin/napi-v6/{darwin,win32,linux/arm64}/**"
+    }
   }
 }

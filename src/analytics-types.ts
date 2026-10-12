@@ -44,6 +44,7 @@ export type Solution = {
   lastAt: string;
 };
 export type Graph = {
+  executionMode?: 'vercel_on_demand' | 'private_worker';
   worker: { lastSeen: string; recent: boolean; model: string } | null;
   method: string;
   model: string;

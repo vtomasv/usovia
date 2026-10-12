@@ -16,3 +16,5 @@ USOVIA_WORKER_ENV_FILE=analytics-worker/.env node analytics-worker/worker.mjs
 Después de preparar la caché puedes establecer `USOVIA_MODELS_OFFLINE=1`. Se exige la revisión fijada en `server/analytics/domain.mjs`; faltas de archivos producen un error, sin descargar ni recurrir a un servicio externo. Protege la caché contra modificaciones y verifica sus artefactos en tu proceso de distribución.
 
 La ruta de caché debe ser un volumen privado y persistente. La credencial de PostgreSQL debe alcanzar solo la base del Hub autorizado. Los embeddings son derivados sensibles; no son datos anónimos.
+
+La demostración de Vercel también dispone de un executor CPU protegido bajo demanda dentro del Hub. No requiere ejecutar este proceso en un computador personal. Consulta [la operación de la demostración](../docs/product-demo.md).

@@ -22,13 +22,13 @@ async function readBody(req){
   try{return object(raw?JSON.parse(raw):{});}catch(e){if(e.status)throw e;throw new ApiError(400,'JSON inválido.');}
 }
 const attempts=new Map();
-export async function handle(req,res,providedService){
+export async function handle(req,res,providedService,onSemanticWork){
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
   const send=(status,data)=>{res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(data));};
   try{
     const url=new URL(req.url,'http://localhost');
     const route=(req.query?.path??url.searchParams.get('path')??url.pathname.replace(/^\/api\/?/,''));
-    if(route==='health'){const ready=!!process.env.DATABASE_URL||!process.env.VERCEL;return send(ready?200:503,{ok:ready,storage:process.env.DATABASE_URL?'postgres':process.env.VERCEL?'missing':'local',version:'1.1.0'});}
+    if(route==='health'){const ready=!!process.env.DATABASE_URL||!process.env.VERCEL;return send(ready?200:503,{ok:ready,storage:process.env.DATABASE_URL?'postgres':process.env.VERCEL?'missing':'local',version:'1.2.0',capabilities:['usage_analytics','semantic_index','private_semantic_cpu','parquet_exports']});}
     if(route==='config')return send(200,{organization:process.env.ORGANIZATION_NAME||'Gobierno corporativo de IA',downloadUrl:process.env.DESKTOP_DOWNLOAD_URL||desktopRelease.url,downloadSha256:desktopRelease.sha256,downloadVersion:desktopRelease.version,hubUrl:process.env.PUBLIC_HUB_URL||null,channels:['Chat de Usovia','API local compatible','Gemini web en Usovia','API y CLI con proxy TLS'],analysisMethod:'Reglas explicables · CPU',centralReady:(!process.env.VERCEL||!!process.env.DATABASE_URL)&&!!process.env.ADMIN_PASSWORD&&!!process.env.SESSION_SECRET});
     const method=req.method||'GET';
     if(method!=='GET'&&method!=='HEAD'){
@@ -57,11 +57,11 @@ export async function handle(req,res,providedService){
       if(method!=='POST')throw new ApiError(405,'Método no permitido.');
       const body=await readBody(req);
       const call={activate:()=>service.activate(body),consent:()=>service.consent(token,body),heartbeat:()=>service.heartbeat(token,body),events:()=>service.ingest(token,body),erase:()=>service.erase(token)}[route];
-      if(!call)throw new ApiError(405,'Método no permitido.');return send(200,await call());
+      if(!call)throw new ApiError(405,'Método no permitido.');const result=await call();send(200,result);if(route==='events'&&result.accepted?.length)onSemanticWork?.();return;
     }
     if(!admin(req))throw new ApiError(401,'Inicia sesión para abrir la consola.');
     if(route==='analytics/session'&&method==='GET')return send(200,await service.analytics.session(Object.fromEntries(url.searchParams)));
-    if(route==='analytics'&&method==='GET')return send(200,await service.analytics.dashboard(Object.fromEntries(url.searchParams)));
+    if(route==='analytics'&&method==='GET'){const data=await service.analytics.dashboard(Object.fromEntries(url.searchParams));send(200,data);if(data.semantic.pending>0)onSemanticWork?.();return;}
     if(route==='accounts'&&method==='GET')return send(200,await service.analytics.directory(Object.fromEntries(url.searchParams)));
     if(route==='analytics/reviews'&&method==='POST')return send(200,await service.analytics.review(await readBody(req)));
     if(route==='analytics/exports'&&method==='POST')return send(201,await new ExportService(service.analytics).create(await readBody(req)));

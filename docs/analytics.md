@@ -1,6 +1,6 @@
 # Análisis corporativo de usos de IA
 
-La central incorpora una vista de inteligencia de uso, un mapa semántico y una biblioteca de soluciones revisables. Se calculan a partir del historial realmente recibido con consentimiento; no se insertan ejemplos ficticios en producción. La nueva funcionalidad requiere publicar el Hub y ejecutar un worker privado para obtener vínculos semánticos. Un push valida el código, sin desplegar Vercel.
+La central incorpora una vista de inteligencia de uso, un mapa semántico y una biblioteca de soluciones revisables. Se calculan a partir del historial realmente recibido con consentimiento; no se insertan ejemplos ficticios en producción. La central 1.2 está publicada y puede procesar embeddings con una función CPU protegida de Vercel; para infraestructura propia también admite un worker independiente. Un push valida el código, sin desplegar Vercel.
 
 ## Qué puede explicar la consola
 
@@ -49,7 +49,7 @@ La cola tiene leases de cinco minutos, lotes de ocho, máximo tres intentos y es
 
 ## Operación privada
 
-Node 22.18 o superior. Instala dependencias de la raíz y del worker; no se incluyen pesos en el build de Vercel:
+Para el worker independiente: Node 22.18 o superior. Instala dependencias de la raíz y del worker; los pesos se distribuyen por separado:
 
 ```sh
 npm ci
@@ -109,3 +109,9 @@ Todas las filas tienen `schema_version`, `row_id`, `session_key`, cuenta seudón
 Se preparan partes de hasta 100 filas/2 MiB de fuente y se comprueba un límite binario de 4 MiB por respuesta. El manifiesto guarda identificadores y hashes, sin copia del texto, expira a los 30 minutos y admite hasta 20 exportaciones activas. Al descargar, una fila que cambió o desapareció se omite, sin mezclar versiones; `X-Usovia-Unavailable-Rows` informa la diferencia. Revisa `X-Usovia-Export-Rows` antes de importar. Un borrado invalida los manifiestos activos del espacio. No hay un snapshot inmóvil del contenido ni garantía de que todas las partes sigan disponibles; prepara una exportación nueva si cambian las conversaciones.
 
 Protege los archivos descargados y aplica la política corporativa de acceso y retención del sistema receptor. La interfaz produce archivos transferibles, no un conector automático hacia terceros.
+
+## Ejecución bajo demanda en la demo Vercel
+
+La demo utiliza `api/semantic.ts`, autenticada con firma temporal del backend, y `waitUntil` para solicitar trabajo tras responder a la ingesta. Los GET autenticados del dashboard también solicitan procesar pendientes. Se verifica la integridad SHA-256 de activos públicos fijados, se ejecuta el modelo propio en CPU y no se envían textos a Hugging Face ni a una API de inferencia externa.
+
+El executor drena lotes de cuatro durante hasta 40 segundos por solicitud, con una duración de función de 60 segundos. Una interrupción conserva los trabajos persistidos y sus leases/reintentos. Las nuevas solicitudes vuelven a intentar trabajos elegibles; no hay todavía un cron permanente ni una garantía de entrega cuando no existe actividad. Esta alternativa elimina la dependencia de un computador personal para mostrar y actualizar la demo, sin equivaler a un worker de disponibilidad permanente. Consulta [operación de la presentación](product-demo.md) y la [referencia oficial de waitUntil](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package).

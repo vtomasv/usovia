@@ -4,7 +4,7 @@
 
 Usovia conecta el aprendizaje cotidiano de los colaboradores con recomendaciones y oportunidades para su organización. Incluye un cliente de escritorio con IA local y un Hub corporativo. La participación es voluntaria y los permisos se autorizan por separado.
 
-[Visitar Usovia](https://usovia-hub-demo.vercel.app) · [Alcance de la versión 1.1](docs/version-1.1.md) · [CI y publicación manual](docs/deployment.md)
+[Visitar Usovia](https://usovia-hub-demo.vercel.app) · [Presentar la central 1.2](docs/product-demo.md) · [Alcance del cliente 1.1](docs/version-1.1.md) · [CI y publicación manual](docs/deployment.md)
 
 ## Qué incluye
 
@@ -13,7 +13,7 @@ Usovia conecta el aprendizaje cotidiano de los colaboradores con recomendaciones
 - Captura autorizada de solicitudes y, con permiso adicional, respuestas; texto redactado y recomendaciones mediante reglas ligeras en CPU.
 - Proxy TLS selectivo para proveedores del catálogo admitido. La central configura proveedores y rutas de generación; no habilita la captura del participante remotamente.
 - Dashboard de inteligencia de uso: categorías, procesos recurrentes, cobertura de captura y resultados con evidencia.
-- Mapa semántico real con embeddings multilingües en un worker privado de CPU, independiente de Vercel; sin inferencia externa.
+- Mapa semántico real con embeddings multilingües: executor CPU protegido en Vercel o worker en infraestructura privada, sin APIs externas de inferencia.
 - Biblioteca de prompts/respuestas con aceptación explícita y validación humana versionada; una respuesta HTTP 200 no significa éxito.
 - Directorio con búsqueda paginada por cuenta seudónima y grupos; conversaciones completas por departamento, sucursal y etiqueta.
 - Exportación Parquet real de turnos, sesiones y soluciones, con texto opcional, esquema y archivos partidos.
@@ -38,7 +38,9 @@ flowchart LR
   Client --> Rules[Clasificación y redacción CPU]
   Rules -->|HTTPS + permisos| Hub[Hub en Vercel]
   Hub --> DB[(PostgreSQL)]
-  Worker[Worker privado de embeddings] --> DB
+  Hub --> Compute[Función privada de embeddings CPU]
+  Compute --> DB
+  Worker[Worker privado opcional] --> DB
   DB --> Console[Dashboard semántico y soluciones]
   Console --> Parquet[Exportación Parquet]
 ```
@@ -62,9 +64,9 @@ npm test
 npm run build
 ```
 
-En Linux, se omiten explícitamente dos pruebas que requieren el servicio y el ayudante nativos de macOS; las otras 78 validan lógica, API, permisos, sesiones y proxy TLS. En macOS, compílalo antes de las pruebas con `npm run build:browser-helper --workspace @usovia/desktop`.
+En Linux, se omiten explícitamente dos pruebas que requieren el servicio y el ayudante nativos de macOS; las otras 82 validan lógica, API, permisos, sesiones y proxy TLS. En macOS, compílalo antes de las pruebas con `npm run build:browser-helper --workspace @usovia/desktop`.
 
-El worker se instala y opera por separado dentro del entorno privado de la empresa. Consulta [arquitectura, calidad, operación y esquema Parquet](docs/analytics.md) y [su configuración](analytics-worker/README.md). La funcionalidad nueva requiere publicación manual del Hub; el repositorio no cambia automáticamente el demo público.
+Para infraestructura propia, el worker se instala y opera por separado dentro del entorno privado de la empresa. Consulta [arquitectura, calidad, operación y esquema Parquet](docs/analytics.md) y [su configuración](analytics-worker/README.md). La central 1.2 está publicada en el demo de Vercel; el repositorio no cambia automáticamente el despliegue público. Las sesiones de demostración están etiquetadas y usan respuestas de un modelo local. La demo procesa nuevas sesiones mediante una función CPU protegida de Vercel; también admite un worker en infraestructura privada.
 
 ## Cliente de escritorio
 
