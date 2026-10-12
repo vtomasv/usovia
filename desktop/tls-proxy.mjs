@@ -17,7 +17,7 @@ const resolvePublic=async host=>{const addresses=await lookup(host,{all:true});c
 const cleanHeaders=headers=>{const result={...headers};const hop=['connection','proxy-connection','proxy-authorization','keep-alive','upgrade','te','trailer','transfer-encoding'];for(const x of String(headers.connection||'').split(','))hop.push(x.trim().toLowerCase());for(const x of hop)delete result[x];return result;};
 export class LlmProxy{
   constructor({controller,authority,policy,onChange=()=>{},port=11440,resolve=resolvePublic,upstreamPort=443,upstreamCA,key,systemBrowser=false}){
-    this.controller=controller;this.authority=authority;this.policy=validatePolicy(policy);this.onChange=onChange;this.port=port;this.resolve=resolve;this.upstreamPort=upstreamPort;this.upstreamCA=upstreamCA;
+    this.controller=controller;this.authority=authority;this.policy=validatePolicy(policy);this.routedHosts=new Set(enabledHosts(this.policy));this.onChange=onChange;this.port=port;this.resolve=resolve;this.upstreamPort=upstreamPort;this.upstreamCA=upstreamCA;
     if(key!==undefined&&(typeof key!=='string'||! /^[A-Za-z0-9_-]{40,128}$/.test(key)))throw new Error('Clave de proxy inválida.');
     this.systemBrowser=systemBrowser;
     this.key=key||randomBytes(32).toString('base64url');this.server=null;this.sockets=new Set();this.inner=new Map();this.innerTimes=new Map();this.stats={inspected:0,captured:0,tunneled:0,unsupported:0};this.epoch=0;
@@ -27,7 +27,7 @@ export class LlmProxy{
   authenticated(req){return equal(req.headers['proxy-authorization'],'Basic '+Buffer.from('usovia:'+this.key).toString('base64'));}
   track(socket){this.sockets.add(socket);socket.on('error',()=>{});socket.once('close',()=>this.sockets.delete(socket));return socket;}
   resetConnections(){this.epoch++;for(const socket of this.sockets)socket.destroy();this.sockets.clear();for(const server of this.inner.values())Promise.resolve(server).then(s=>s.closeAllConnections());this.inner.clear();this.innerTimes.clear();}
-  async applyPolicy(policy){this.policy=validatePolicy(policy);this.resetConnections();}
+  async applyPolicy(policy){const next=validatePolicy(policy);for(const host of enabledHosts(next))this.routedHosts.add(host);this.policy=next;this.resetConnections();}
   async start(){
     if(this.server)return;
     const server=http.createServer({maxHeaderSize:65536},(_req,res)=>{res.writeHead(405);res.end('Usovia admite túneles HTTPS.');});
@@ -43,8 +43,11 @@ export class LlmProxy{
     if(!this.controller.state.consent.capture||this.sockets.size>64){socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n');return;}
     const match=/^([a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?):443$/.exec(req.url||'');if(!match){socket.destroy();return;}
     const hostname=match[1].toLowerCase(),epoch=this.epoch;socket.pause();
-    if(this.systemBrowser&&!this.hosts.includes(hostname)){socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');return;}
+    if(this.systemBrowser&&!this.hosts.includes(hostname)&&!this.routedHosts.has(hostname)){socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');return;}
     if(!this.hosts.includes(hostname)){
+      // A browser may retain the previous PAC. Previously routed LLM hosts are
+      // relayed as opaque TLS after exclusion, without decrypting or observing.
+      // Unknown hosts remain forbidden on the system listener.
       const address=await this.resolve(hostname);if(epoch!==this.epoch||socket.destroyed)return;
       const upstream=this.track(net.connect({host:address.address,family:address.family,port:this.upstreamPort}));upstream.setTimeout(120000,()=>upstream.destroy());
       upstream.once('connect',()=>{if(socket.destroyed){upstream.destroy();return;}this.stats.tunneled++;socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');if(head.length)upstream.write(head);socket.resume();socket.pipe(upstream).pipe(socket);});

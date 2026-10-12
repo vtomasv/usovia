@@ -37,6 +37,13 @@ test('browser listener needs local opt-in, accepts LLM only and keeps SDK proxy 
   await assert.rejects(tunnel(proxy,'api.openai.com',{auth:false}),/407/);
   controller.state.consent.capture=false;await assert.rejects(tunnel(browser,'api.openai.com',{auth:false}),/503/);
 });
+test('cached browser PAC never blocks a retired LLM host and its TLS is no longer inspected',async t=>{
+  const {proxy,controller}=await setup(t);const browser=new LlmProxy({controller,authority:root,policy:defaultPolicy(),port:0,systemBrowser:true,resolve:proxy.resolve,upstreamPort:proxy.upstreamPort,upstreamCA:root.cert});await browser.start();t.after(()=>browser.stop());
+  const next=defaultPolicy();next.revision=2;next.endpoints.filter(e=>e.id.startsWith('openai')).forEach(e=>e.enabled=false);await browser.applyPolicy(next);
+  const {raw}=await request(browser,'api.openai.com','/v1/chat/completions',{messages:[{role:'user',content:'No longer observed'}]},{auth:false});
+  assert.match(raw,/200 OK/);assert.equal(browser.stats.captured,0);assert.equal(browser.stats.inspected,0);assert.equal(browser.stats.tunneled,1);assert.equal(controller.state.pending.length,0);
+  await assert.rejects(tunnel(browser,'example.com',{auth:false}),/403/);
+});
 
 test('TLS capture preserves compressed streaming bytes and redacts the authorized response independently',async t=>{
  const payload='data: {"choices":[{"delta":{"content":"Reply to persona@example.invalid api_key=abcdefghijklmnop123456"}}]}\n\ndata: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n';
