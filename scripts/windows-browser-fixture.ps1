@@ -5,6 +5,7 @@ if ($env:OS -ne 'Windows_NT' -or $env:GITHUB_ACTIONS -ne 'true' -or $env:USOVIA_
 $hostsPath = Join-Path $env:WINDIR 'System32/drivers/etc/hosts'
 $statePath = Join-Path $Directory 'fixture-state.json'
 $assembly = [Reflection.Assembly]::LoadFile((Resolve-Path $Helper).Path)
+if ($Action -eq 'Setup') { Write-Host 'Fixture phase: native assembly loaded.' }
 $native = $assembly.GetType('WindowsBrowserRouting')
 $binding = [Reflection.BindingFlags]'NonPublic,Static'
 $get = $native.GetMethod('GetProxy', $binding)
@@ -28,7 +29,9 @@ if ($Action -eq 'Setup') {
   $block = "`r`n$marker`r`n127.0.0.1 gemini.google.com api.openai.com api.anthropic.com generativelanguage.googleapis.com nonllm.usovia-fixture.invalid`r`n# End $marker`r`n"
   $state = @{ originalHosts = [Convert]::ToBase64String($original); marker = $marker; block = $block; proxy = $get.Invoke($null,@()); upstreamRootAdded = -not (Has-Root (Join-Path $Directory 'upstream.cer')) }
   $state | ConvertTo-Json -Depth 6 | Set-Content $statePath -Encoding utf8
+  Write-Host 'Fixture phase: original settings journaled.'
   if ($state.upstreamRootAdded) { $store=[Security.Cryptography.X509Certificates.X509Store]::new('Root','CurrentUser'); try {$store.Open('ReadWrite');$store.Add($cert)} finally {$store.Close()} }
+  Write-Host 'Fixture phase: controlled upstream CA installed.'
   [IO.File]::WriteAllText($hostsPath, [Text.Encoding]::UTF8.GetString($original) + $block, [Text.UTF8Encoding]::new($false))
   ipconfig /flushdns | Out-Null
 } elseif ($Action -eq 'Inspect') {

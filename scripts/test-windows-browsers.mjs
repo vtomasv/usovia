@@ -24,6 +24,10 @@ await writeFile(join(directory,'upstream.cer'),new X509Certificate(upstream.cert
 await writeFile(join(directory,'usovia.cer'),new X509Certificate(authority.cert).raw);
 await writeFile(join(directory,'usovia.pem'),authority.cert);
 const fixture=async action=>{const r=await run('powershell.exe',['-NoProfile','-NonInteractive','-File',fileURLToPath(new URL('./windows-browser-fixture.ps1',import.meta.url)),'-Action',action,'-Directory',directory,'-Helper',helper],{windowsHide:true,timeout:30000,maxBuffer:65536});return action==='Inspect'?JSON.parse(r.stdout):r.stdout;};
+const compiler=join(process.env.WINDIR,'Microsoft.NET/Framework64/v4.0.30319/csc.exe'),consentExecutable=join(directory,'fixture-consent.exe');
+await run(compiler,['/nologo','/target:exe','/platform:x64','/reference:WindowsBase.dll','/reference:UIAutomationClient.dll','/reference:UIAutomationTypes.dll','/out:'+consentExecutable,fileURLToPath(new URL('./WindowsFixtureConsent.cs',import.meta.url))],{windowsHide:true});
+const consentProcess=spawn(consentExecutable,[directory],{stdio:['ignore','pipe','pipe'],windowsHide:true});
+consentProcess.stdout.on('data',bytes=>console.log(bytes.toString().trim()));
 const eventually=async(fn,label,timeout=30000)=>{const end=Date.now()+timeout;let value;while(Date.now()<end){value=await fn();if(value)return value;await new Promise(r=>setTimeout(r,250));}throw new Error('Timeout: '+label);};
 const state=initialClient();state.token='synthetic-browser-fixture';state.consent={capture:true,shareText:true,captureResponses:true,reportStatus:false};state.consentVersion=1;
 const controller=new ClientController({state,save:async()=>{},request:fetch});
@@ -107,11 +111,11 @@ try {
   const child=fork(childFile,[],{stdio:['ignore','ignore','ignore','ipc']});await new Promise((resolve,reject)=>{child.once('message',resolve);child.once('error',reject);});await eventually(()=>fixture('Inspect').then(s=>s.usoviaRoot),'watchdog fixture activation');
   child.kill();await eventually(()=>fixture('Inspect').then(s=>!s.usoviaRoot&&JSON.stringify(s.proxy)===JSON.stringify(original)),'parent death restores routing and trust');report.parentDeathRestores=true;
   report.capturedTurns=controller.state.pending.length;report.ok=true;
-}catch(error){report.error=error.message;throw error;}
+}catch(error){report.error=error.message+(error.stdout?'\n'+error.stdout:'')+(error.stderr?'\n'+error.stderr:'');throw error;}
 finally {
   for(const b of [...sessions])await b.close().catch(()=>{});
   for(const driver of drivers)driver.kill();
   await proxy.stop().catch(()=>{});await routing.stop().catch(()=>{});await routing.authorizeRecovery().catch(()=>{});
-  if(fixtureStarted)await fixture('Teardown');origin.closeAllConnections();await new Promise(r=>origin.close(r));
+  if(fixtureStarted)await fixture('Teardown');consentProcess.kill();origin.closeAllConnections();await new Promise(r=>origin.close(r));
   await writeFile(join(directory,'windows-browser-verification.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 }
