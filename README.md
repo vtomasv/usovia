@@ -26,7 +26,7 @@ La captura cubre chat/API local, Gemini en el navegador integrado y API/CLI conf
 
 El modo actual observa sin bloqueo de contenido. Se redactan patrones conocidos; esto no garantiza anonimización. Las cuentas no piden nombre/correo, pero el contexto puede permitir identificar a una persona. Las oportunidades son hipótesis para revisión humana y no miden productividad. Un reporte reciente no demuestra el estado de encendido del computador.
 
-El instalador macOS 1.3 está firmado con Developer ID y notarizado por Apple. Se verificaron el DMG, Gatekeeper y una inferencia local real con el cliente extraído de ese paquete. La integración gráfica de navegadores conserva su matriz de validación pendiente; el ayudante utiliza una API macOS heredada que debe sustituirse antes de distribución gestionada. Revisa [la distribución firmada](docs/version-1.3-macos.md), [los límites técnicos](docs/version-1.1.md) y [seguridad](SECURITY.md).
+El instalador macOS 1.3.1 está firmado con Developer ID y notarizado por Apple. Se verificaron el DMG, Gatekeeper y una inferencia local real con el cliente extraído de ese paquete. La integración gráfica de navegadores conserva su matriz de validación pendiente; el ayudante utiliza una API macOS heredada que debe sustituirse antes de distribución gestionada. Revisa [la distribución firmada](docs/version-1.3-macos.md), [los límites técnicos](docs/version-1.1.md) y [seguridad](SECURITY.md).
 
 ## Arquitectura
 
