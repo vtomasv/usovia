@@ -25,7 +25,7 @@ await writeFile(join(directory,'usovia.cer'),new X509Certificate(authority.cert)
 await writeFile(join(directory,'usovia.pem'),authority.cert);
 const fixture=async action=>{const r=await run('powershell.exe',['-NoProfile','-NonInteractive','-File',fileURLToPath(new URL('./windows-browser-fixture.ps1',import.meta.url)),'-Action',action,'-Directory',directory,'-Helper',helper],{windowsHide:true,timeout:30000,maxBuffer:65536});return action==='Inspect'?JSON.parse(r.stdout):r.stdout;};
 const compiler=join(process.env.WINDIR,'Microsoft.NET/Framework64/v4.0.30319/csc.exe'),consentExecutable=join(directory,'fixture-consent.exe');
-await run(compiler,['/nologo','/target:exe','/platform:x64','/reference:WindowsBase.dll','/reference:UIAutomationClient.dll','/reference:UIAutomationTypes.dll','/out:'+consentExecutable,fileURLToPath(new URL('./WindowsFixtureConsent.cs',import.meta.url))],{windowsHide:true});
+await run(compiler,['/nologo','/target:exe','/platform:x64','/lib:'+join(process.env.WINDIR,'Microsoft.NET/Framework64/v4.0.30319/WPF'),'/reference:WindowsBase.dll','/reference:UIAutomationClient.dll','/reference:UIAutomationTypes.dll','/out:'+consentExecutable,fileURLToPath(new URL('./WindowsFixtureConsent.cs',import.meta.url))],{windowsHide:true});
 const consentProcess=spawn(consentExecutable,[directory],{stdio:['ignore','pipe','pipe'],windowsHide:true});
 consentProcess.stdout.on('data',bytes=>console.log(bytes.toString().trim()));
 const eventually=async(fn,label,timeout=30000)=>{const end=Date.now()+timeout;let value;while(Date.now()<end){value=await fn();if(value)return value;await new Promise(r=>setTimeout(r,250));}throw new Error('Timeout: '+label);};
