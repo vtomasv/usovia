@@ -1,39 +1,45 @@
-# GitHub → Vercel
+# CI y publicación manual
 
-El Hub se despliega con la integración Git nativa de Vercel. No se guardan tokens de Vercel en GitHub Actions. El cliente de escritorio se empaqueta y publica por separado; un push del Hub no genera ni firma un instalador.
-
-**Estado de activación:** GitHub Actions está activo en `vtomasv/usovia`. Vercel todavía exige una Login Connection de GitHub para vincular el proyecto existente. La landing ya está publicada mediante CLI; la conexión automática queda pendiente de ese paso del titular.
+El repositorio público es [vtomasv/usovia](https://github.com/vtomasv/usovia). GitHub Actions está activo; Vercel se publica por CLI. El proyecto no está conectado a GitHub y `git.deploymentEnabled` está desactivado explícitamente. Los pushes no despliegan la web. No se copian tokens de Vercel a Actions.
 
 ## Flujo
 
-1. Un push a `main` ejecuta GitHub Actions: instalación desde el lockfile, TypeScript, pruebas de API/proxy/consentimiento, auditoría de dependencias de producción y build.
-2. Vercel recibe el mismo commit desde GitHub. Su build vuelve a ejecutar TypeScript y pruebas antes de crear la nueva versión de producción. Por tanto, un fallo de esas comprobaciones impide publicar ese build, aunque Actions y Vercel se ejecuten en paralelo. La auditoría de Actions es una comprobación adicional; no es una dependencia entre ambos sistemas.
-En Linux se ejecutan 66 pruebas y se omiten explícitamente las dos que requieren macOS. Las pruebas se ejecutan sin credenciales de servicios heredadas y el runner falla si no hay archivos de prueba.
+1. Un push a `main` o PR ejecuta CI: instalación desde el lockfile, formato, TypeScript, pruebas de API/proxy/consentimiento, auditoría de dependencias de producción y build.
+2. Revisa el resultado del CI y los cambios antes de publicar.
+3. En la máquina autenticada y vinculada al proyecto correcto, ejecuta `npm run deploy`. El script `predeploy` comprueba formato, tipos y pruebas. El build de Vercel vuelve a validar tipos y pruebas antes de publicar.
+4. Verifica la URL de producción, `/api/health`, el acceso administrativo y la descarga. Un despliegue fallido conserva el anterior. Para revertir, promueve una versión anterior desde Vercel y revierte el commit mediante una nueva confirmación revisable.
 
-3. Solo `main` genera despliegues automáticos. Las demás ramas tienen despliegue desactivado mediante `git.deploymentEnabled`: las variables heredadas del proyecto incluyen acceso a la base de producción, por lo que no se publican previews con esa configuración. Antes de habilitar previews, prepara una base y secretos independientes, y elimina de ese entorno todas las credenciales de producción. No ejecutes código de PR no confiables con ellas.
-4. Un despliegue fallido conserva el anterior. Para revertir, promueve un despliegue anterior desde Vercel y revierte el commit en Git con una nueva confirmación revisable.
+En Linux se ejecutan 66 pruebas y se omiten explícitamente las dos que requieren macOS. En el Mac con ayudante compilado se ejecutan las 68. El runner elimina las credenciales de servicios heredadas y falla si faltan los archivos de prueba.
 
-## Identidad
+El cliente de escritorio se empaqueta y publica por separado. Un push o despliegue del Hub no genera ni firma un instalador.
 
-Configura `git config user.name vtomasv` y `git config user.email vtomasv@gmail.com` en este repositorio. Tanto autor como committer deben corresponder a la cuenta autorizada. El propietario de Vercel debe vincular su cuenta GitHub en sus métodos de autenticación. En Hobby, Vercel exige que el autor del commit sea el propietario del equipo; una identidad no reconocida puede impedir el despliegue. Eso no significa automáticamente que Vercel bloquee la cuenta.
-
-Referencias: [integración Git](https://vercel.com/docs/git), [colaboración e identidad](https://vercel.com/docs/deployments/troubleshoot-project-collaboration), [conexión por CLI](https://vercel.com/docs/cli/git).
-
-## Configuración del Hub
-
-Node 22, Vite, `dist`, instalación `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`. Las funciones viven en `api/` y reutilizan `server/` y `shared/`. No tienen acceso a certificados privados del endpoint.
-
-Variables privadas de Production: `ADMIN_PASSWORD`, `SESSION_SECRET`, `DATABASE_URL`. Variables de configuración: `TENANT_ID`, `ORGANIZATION_NAME`, `PUBLIC_HUB_URL`; descarga opcional `DESKTOP_DOWNLOAD_URL`. Genera secretos distintos y largos. No se publica el archivo `.env.local`, configuración de CLI, tokens, base de datos, telemetría, modelos, runtime ni instaladores.
-
-Para conectar el proyecto existente con autorización del propietario:
+## Identidad y autenticación
 
 ```sh
-npx vercel link
-npx vercel git connect https://github.com/vtomasv/usovia.git
+git config user.name vtomasv
+git config user.email vtomasv@gmail.com
 ```
 
-No uses una cuenta GitHub distinta ni cambies el correo a uno ajeno para eludir las reglas. Verifica en el primer despliegue que `VERCEL_GIT_COMMIT_SHA` corresponde al commit publicado y que GitHub reconoce su autor.
+Autor y committer deben corresponder a la cuenta autorizada. Los pushes utilizan la sesión GitHub del propietario. No cambies el correo a uno ajeno para eludir las comprobaciones de identidad.
 
-## Límite de distribución
+En una nueva máquina, inicia sesión en Vercel y vincula el directorio al proyecto autorizado mediante `npx vercel login` y `npx vercel link`. La conexión local a un proyecto es distinta de conectar un repositorio Git para despliegues automáticos.
 
-La versión actual de escritorio es macOS Apple Silicon sin firma Developer ID ni notarización. No hay build automático de Windows/Linux ni publicación automática de una CA. La autorización gráfica de la nueva integración de navegadores requiere todavía una validación completa en un Mac desbloqueado. Antes de distribuir de forma gestionada, hay que firmar/notarizar y sustituir el ayudante de autorización heredado por un servicio macOS moderno.
+En esta máquina se utiliza una configuración de CLI privada dentro de `.vercel-cli`:
+
+```sh
+npm run deploy -- --yes --global-config .vercel-cli
+```
+
+Ese directorio y `.vercel/project.json` están excluidos de Git. Nunca incluyas tokens en argumentos de commits, workflows o archivos públicos.
+
+## Entornos
+
+Node 22, Vite, `dist`, instalación `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`. Las funciones viven en `api/` y reutilizan `server/` y `shared/`. No reciben certificados privados del endpoint.
+
+Variables privadas de Production: `ADMIN_PASSWORD`, `SESSION_SECRET`, `DATABASE_URL`. Variables de configuración: `TENANT_ID`, `ORGANIZATION_NAME`, `PUBLIC_HUB_URL`; descarga opcional `DESKTOP_DOWNLOAD_URL`. Genera secretos distintos y largos. Git no incluye estados locales, credenciales, telemetría, modelos, runtime ni instaladores.
+
+Las variables heredadas del proyecto incluyen acceso a producción en otros entornos; por eso no se utilizan previews. Antes de habilitarlos, prepara una base y secretos independientes y retira del entorno Preview todas las credenciales de producción. No ejecutes código de PR no confiables con ellas.
+
+## Distribución de escritorio
+
+La versión actual es macOS Apple Silicon sin firma Developer ID ni notarización. No hay build automático de Windows/Linux ni publicación automática de una CA. La nueva autorización gráfica de navegadores requiere todavía una validación completa en un Mac desbloqueado. Antes de distribución gestionada, firma/notariza y sustituye el ayudante heredado por un servicio macOS moderno.

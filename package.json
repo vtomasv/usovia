@@ -12,7 +12,10 @@
     "desktop:package": "npm run package --workspace @usovia/desktop",
     "db:init": "node scripts/db-init.mjs",
     "deploy": "vercel --prod",
-    "vercel:login": "vercel login"
+    "vercel:login": "vercel login",
+    "format:check": "prettier --check src",
+    "format": "prettier --write src",
+    "predeploy": "npm run format:check && npm run check && npm test"
   },
   "workspaces": [
     "desktop"
@@ -28,6 +31,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "prettier": "3.9.10",
     "typescript": "^5.9.0",
     "vercel": "63.1.2",
     "vite": "8.3.4"

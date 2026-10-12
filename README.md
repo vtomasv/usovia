@@ -73,9 +73,20 @@ Los artefactos se generan en `desktop/release/`. Los pesos se descargan por sepa
 
 ## Pipeline
 
-GitHub Actions verifica Node 22, tipos, pruebas, dependencias de producción y build. Vercel conectado al repositorio publica `main` y ejecuta tipos/pruebas en su propio build. Los instaladores se publican por separado; no se comparten tokens de Vercel con Actions. Consulta [configuración, identidad y rollback](docs/deployment.md).
+GitHub Actions verifica automáticamente formato, Node 22, tipos, pruebas, dependencias de producción y build. El despliegue de Vercel es manual: el proyecto no está conectado a GitHub y los despliegues Git están desactivados explícitamente en `vercel.json`. Un push valida el código; no publica la web.
 
-El repositorio está publicado en [vtomasv/usovia](https://github.com/vtomasv/usovia). CI está activo y validado. La conexión Git de Vercel requiere que el titular vincule GitHub en Authentication; hasta completar ese paso, la publicación existente se realiza por CLI y el despliegue por push no está activo.
+El repositorio está en [vtomasv/usovia](https://github.com/vtomasv/usovia). Los commits se atribuyen a `vtomasv <vtomasv@gmail.com>`. Para publicar, revisa el CI y ejecuta `npm run deploy` en una máquina autenticada y vinculada al proyecto Vercel correcto. La configuración privada de CLI y los instaladores no están en Git. Consulta [publicación manual y rollback](docs/deployment.md).
+
+## Organización del frontend
+
+- `src/main.tsx`: entrada de React; `src/app.tsx`: coordinación de sesión y consola.
+- `src/landing.tsx`: experiencia del colaborador.
+- `src/api.ts`: cliente HTTP tipado, manejo de errores y cancelación.
+- `src/types.ts` y `src/format.ts`: contratos de la consola y formatos compartidos.
+- `src/providers.tsx` y `src/conversations.tsx`: vistas por responsabilidad, cargadas solo al abrirlas.
+- `src/components/`: marca, acceso administrativo y tabla de aportes.
+
+`npm run format` mantiene el formato del frontend; `npm run format:check` lo valida sin modificar archivos.
 
 ## Código y componentes de terceros
 
