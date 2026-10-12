@@ -38,7 +38,7 @@ async function runtimeRequest(path,body){const r=await fetch(runtimeUrl+path,{me
 async function runtimeStatus(){try{const r=await fetch(runtimeUrl+'/api/tags',{signal:AbortSignal.timeout(1500)});return {ready:r.ok,models:(await r.json()).models||[]};}catch{return {ready:false,models:[]};}}
 async function startRuntime(){
   const status=await runtimeStatus();if(status.ready)return;
-  const directory=app.isPackaged?join(process.resourcesPath,'ollama'):join(here,'runtime');
+  const directory=app.isPackaged?join(process.resourcesPath,'ollama'):join(here,process.platform==='win32'?'runtime-windows':'runtime');
   runtime=spawn(join(directory,process.platform==='win32'?'ollama.exe':'ollama'),['serve'],{cwd:directory,windowsHide:true,env:{...process.env,OLLAMA_HOST:'127.0.0.1:11438',OLLAMA_MODELS:join(app.getPath('userData'),'models'),OLLAMA_NO_CLOUD:'1',OLLAMA_DEBUG_LOG_REQUESTS:'false',OLLAMA_KEEP_ALIVE:'2m'},stdio:'ignore'});
   runtime.on('error',()=>push());runtime.on('exit',()=>{runtime=null;push();});
 }

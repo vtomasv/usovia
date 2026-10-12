@@ -84,10 +84,10 @@ try {
     await eventually(()=>controller.state.pending.length===start+5,name+' captured turns');
     const turns=controller.state.pending.slice(start);assert.equal(turns[0].conversationId,turns[1].conversationId);assert.deepEqual(turns.slice(0,2).map(t=>t.turnIndex),[1,2]);
     assert.ok(turns.every(t=>t.responseStatus==='complete'&&t.redactedResponse));assert.ok(!JSON.stringify(turns).includes('persona@example.invalid'));
+    const screenshot=await b.command('/screenshot');await writeFile(join(directory,name+'.png'),Buffer.from(screenshot,'base64'));
     const captured=proxy.stats.captured,inspectedBefore=proxy.stats.inspected;
     await b.command('/url',{url:'https://nonllm.usovia-fixture.invalid/normal'});assert.equal(proxy.stats.captured,captured);assert.equal(proxy.stats.inspected,inspectedBefore);
     await b.command('/url',{url:'https://gemini.google.com/assets?prompt=unrelated'});assert.equal(proxy.stats.captured,captured);
-    const screenshot=await b.command('/screenshot');await writeFile(join(directory,name+'.png'),Buffer.from(screenshot,'base64'));
     report.browsers.push({name,version:b.version,promptAndResponse:true,turns:5,conversationConsistent:true,redaction:true,nonLlmDirect:true,nonGenerationExcluded:true,certificateValidation:true});await b.close();
   }
   policy=defaultPolicy();policy.revision=2;policy.endpoints.filter(e=>e.id==='gemini-web').forEach(e=>e.enabled=false);
