@@ -25,7 +25,7 @@ await writeFile(join(directory,'usovia.cer'),new X509Certificate(authority.cert)
 await writeFile(join(directory,'usovia.pem'),authority.cert);
 const fixture=async action=>{const r=await run('powershell.exe',['-NoProfile','-NonInteractive','-File',fileURLToPath(new URL('./windows-browser-fixture.ps1',import.meta.url)),'-Action',action,'-Directory',directory,'-Helper',helper],{windowsHide:true,timeout:30000,maxBuffer:65536});return action==='Inspect'?JSON.parse(r.stdout):r.stdout;};
 const compiler=join(process.env.WINDIR,'Microsoft.NET/Framework64/v4.0.30319/csc.exe'),consentExecutable=join(directory,'fixture-consent.exe');
-await run(compiler,['/nologo','/target:exe','/platform:x64','/lib:'+join(process.env.WINDIR,'Microsoft.NET/Framework64/v4.0.30319/WPF'),'/reference:WindowsBase.dll','/reference:UIAutomationClient.dll','/reference:UIAutomationTypes.dll','/out:'+consentExecutable,fileURLToPath(new URL('./WindowsFixtureConsent.cs',import.meta.url))],{windowsHide:true});
+await run(compiler,['/nologo','/target:exe','/platform:x64','/lib:'+join(process.env.WINDIR,'Microsoft.NET/Framework64/v4.0.30319/WPF'),'/reference:System.Web.Extensions.dll','/reference:WindowsBase.dll','/reference:UIAutomationClient.dll','/reference:UIAutomationTypes.dll','/out:'+consentExecutable,fileURLToPath(new URL('./WindowsFixtureConsent.cs',import.meta.url))],{windowsHide:true});
 const consentProcess=spawn(consentExecutable,[directory],{stdio:['ignore','pipe','pipe'],windowsHide:true});
 consentProcess.stdout.on('data',bytes=>console.log(bytes.toString().trim()));
 const eventually=async(fn,label,timeout=30000)=>{const end=Date.now()+timeout;let value;while(Date.now()<end){value=await fn();if(value)return value;await new Promise(r=>setTimeout(r,250));}throw new Error('Timeout: '+label);};
@@ -113,9 +113,11 @@ try {
   report.capturedTurns=controller.state.pending.length;report.ok=true;
 }catch(error){report.error=error.message+(error.stdout?'\n'+error.stdout:'')+(error.stderr?'\n'+error.stderr:'');throw error;}
 finally {
+  await writeFile(join(directory,'windows-browser-verification.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
   for(const b of [...sessions])await b.close().catch(()=>{});
   for(const driver of drivers)driver.kill();
   await proxy.stop().catch(()=>{});await routing.stop().catch(()=>{});await routing.authorizeRecovery().catch(()=>{});
-  if(fixtureStarted)await fixture('Teardown');consentProcess.kill();origin.closeAllConnections();await new Promise(r=>origin.close(r));
+  if(fixtureStarted)try{await fixture('Teardown');report.fixtureCleaned=true;}catch(error){report.ok=false;report.cleanupError=error.message;process.exitCode=1;}
+  consentProcess.kill();origin.closeAllConnections();await new Promise(r=>origin.close(r));
   await writeFile(join(directory,'windows-browser-verification.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 }

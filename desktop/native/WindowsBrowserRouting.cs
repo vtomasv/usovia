@@ -88,7 +88,9 @@ internal class WindowsBrowserRouting {
   }
   static bool Trusted(X509Certificate2 cert){using(var store=new X509Store(StoreName.Root,StoreLocation.CurrentUser)){store.Open(OpenFlags.ReadOnly);foreach(var candidate in store.Certificates)if(Sha(candidate)==Sha(cert))return true;}return false;}
   static void AddRoot(X509Certificate2 cert){using(var store=new X509Store(StoreName.Root,StoreLocation.CurrentUser)){store.Open(OpenFlags.ReadWrite);store.Add(cert);}}
-  static void RemoveRoot(X509Certificate2 cert){using(var store=new X509Store(StoreName.Root,StoreLocation.CurrentUser)){store.Open(OpenFlags.ReadWrite);foreach(var candidate in store.Certificates)if(Sha(candidate)==Sha(cert))store.Remove(candidate);}}
+  static void RemoveRoot(X509Certificate2 cert,string directory){using(var store=new X509Store(StoreName.Root,StoreLocation.CurrentUser)){store.Open(OpenFlags.ReadWrite);foreach(var candidate in store.Certificates)if(Sha(candidate)==Sha(cert)){
+    Write(Path.Combine(directory,"native-"+Process.GetCurrentProcess().Id+".cert-operation.json"),new{pid=Process.GetCurrentProcess().Id,thumbprint=cert.Thumbprint,action="remove",at=Now()});store.Remove(candidate);
+  }}}
   static ProxyState Original(Dictionary<string,object> journal){return Json.ConvertToType<ProxyState>(journal["original"]);}
   static bool Same(ProxyState a,ProxyState b){return a.flags==b.flags&&a.pac==b.pac&&a.server==b.server&&a.bypass==b.bypass;}
   static bool Alive(int pid,long started){try{return Process.GetProcessById(pid).StartTime.ToUniversalTime().Ticks==started;}catch{return false;}}
@@ -97,7 +99,7 @@ internal class WindowsBrowserRouting {
     var expected=new ProxyState{flags=5,pac=Text(journal,"ownedPac"),server=original.server,bypass=original.bypass};
     var previous=new ProxyState{flags=5,pac=Text(journal,"priorOwnedPac"),server=original.server,bypass=original.bypass};
     if(Same(current,expected)||previous.pac!=""&&Same(current,previous))SetProxy(original); // Never overwrite foreign edits; also fence a crash during revision replacement.
-    if(Flag(journal,"addedRoot"))RemoveRoot(cert);
+    if(Flag(journal,"addedRoot"))RemoveRoot(cert,Path.GetDirectoryName(path));
     journal["addedRoot"]=false;journal["complete"]=true;Write(path,journal);
   }
   static void Recover(string directory){

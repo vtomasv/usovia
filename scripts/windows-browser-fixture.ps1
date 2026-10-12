@@ -46,6 +46,6 @@ if ($Action -eq 'Setup') {
   $current=[IO.File]::ReadAllText($hostsPath);$original=[Convert]::FromBase64String($state.originalHosts)
   if ($current -eq ([Text.Encoding]::UTF8.GetString($original) + $state.block)) { [IO.File]::WriteAllBytes($hostsPath,$original) }
   else { [IO.File]::WriteAllText($hostsPath,$current.Replace($state.block,''),[Text.UTF8Encoding]::new($false)) }
-  if ($state.upstreamRootAdded) { $cert=[Security.Cryptography.X509Certificates.X509Certificate2]::new((Join-Path $Directory 'upstream.cer'));$store=[Security.Cryptography.X509Certificates.X509Store]::new('Root','CurrentUser');try {$store.Open('ReadWrite');foreach($candidate in $store.Certificates){if($candidate.Thumbprint -eq $cert.Thumbprint){$store.Remove($candidate)}}} finally {$store.Close()} }
+  if ($state.upstreamRootAdded) { $cert=[Security.Cryptography.X509Certificates.X509Certificate2]::new((Join-Path $Directory 'upstream.cer'));$store=[Security.Cryptography.X509Certificates.X509Store]::new('Root','CurrentUser');try {$store.Open('ReadWrite');foreach($candidate in $store.Certificates){if($candidate.Thumbprint -eq $cert.Thumbprint){@{pid=$PID;thumbprint=$cert.Thumbprint;action='remove';at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()} | ConvertTo-Json | Set-Content (Join-Path $Directory 'fixture.cert-operation.json');$store.Remove($candidate)}}} finally {$store.Close()} }
   ipconfig /flushdns | Out-Null
 }
