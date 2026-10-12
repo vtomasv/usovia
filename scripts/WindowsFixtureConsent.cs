@@ -26,7 +26,7 @@ class WindowsFixtureConsent {
           var elements=window.FindAll(TreeScope.Descendants,Condition.TrueCondition);
           string text=String.Join("\n",elements.Cast<AutomationElement>().Select(element=>element.Current.Name));
           bool owned=names.Any(name=>text.Contains(name));
-          if(!owned&&title.Contains("Confirm Certificate Deletion"))foreach(string path in Directory.GetFiles(directory,"*.cert-operation.json"))try{
+          if(!owned)foreach(string path in Directory.GetFiles(directory,"*.cert-operation.json"))try{
             var operation=new JavaScriptSerializer().Deserialize<System.Collections.Generic.Dictionary<string,object>>(File.ReadAllText(path));
             long age=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()-Convert.ToInt64(operation["at"]);
             if(Convert.ToInt32(operation["pid"])==process.Id&&Convert.ToString(operation["action"])=="remove"&&age>=0&&age<30000&&certificates.Any(cert=>cert.Thumbprint==Convert.ToString(operation["thumbprint"])))owned=true;

@@ -56,10 +56,11 @@ const sessions=new Set(),drivers=new Set();let fixtureStarted=false;
 async function browser(name,index){
   const binaries={Chrome:[process.env.CHROMEWEBDRIVER,'chromedriver.exe','chrome','goog:chromeOptions'],Edge:[process.env.EDGEWEBDRIVER,'msedgedriver.exe','MicrosoftEdge','ms:edgeOptions'],Firefox:[process.env.GECKOWEBDRIVER,'geckodriver.exe','firefox','moz:firefoxOptions']};
   const [path,file,browserName,options]=binaries[name],port=19000+index;
-  const driver=spawn(join(path,file),['--port',String(port)],{stdio:'ignore',windowsHide:true});
+  const driver=spawn(join(path,file),['--port='+port],{stdio:['ignore','pipe','pipe'],windowsHide:true});let driverLog='',driverError=null;
+  driver.stdout.on('data',bytes=>driverLog+=bytes.toString());driver.stderr.on('data',bytes=>driverLog+=bytes.toString());driver.once('error',error=>{driverError=error;});
   drivers.add(driver);driver.once('exit',()=>drivers.delete(driver));
   const base=`http://127.0.0.1:${port}`;
-  await eventually(()=>fetch(base+'/status').then(r=>r.ok).catch(()=>false),name+' driver');
+  await eventually(async()=>{if(driverError)throw driverError;if(driver.exitCode!==null)throw new Error(name+' driver exited: '+driverLog.slice(-1500));return fetch(base+'/status').then(r=>r.ok).catch(()=>false);},name+' driver');
   const command=async(path,body,method=body?'POST':'GET')=>{const r=await fetch(base+path,{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(45000)});const data=await r.json();if(!r.ok||data.value?.error)throw new Error(name+': '+JSON.stringify(data.value));return data.value;};
   const config={browserName,acceptInsecureCerts:false,proxy:{proxyType:'system'},[options]:{args:name==='Firefox'?['-headless']:['--headless=new','--no-first-run','--disable-background-networking']}};
   const session=await command('/session',{capabilities:{alwaysMatch:config}});assert.equal(session.capabilities.acceptInsecureCerts,false);

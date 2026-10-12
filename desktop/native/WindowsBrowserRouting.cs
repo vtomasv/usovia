@@ -13,6 +13,7 @@ using Microsoft.Win32;
 
 internal class WindowsBrowserRouting {
   static readonly JavaScriptSerializer Json = new JavaScriptSerializer();
+  static readonly object FileLock = new object();
   const int PerConnection = 75, Refresh = 37, SettingsChanged = 39;
   [StructLayout(LayoutKind.Explicit)] struct Value { [FieldOffset(0)] public uint number; [FieldOffset(0)] public IntPtr text; [FieldOffset(0)] public long time; }
   [StructLayout(LayoutKind.Sequential)] struct Option { public int kind; public Value value; }
@@ -23,11 +24,11 @@ internal class WindowsBrowserRouting {
   [DllImport("kernel32.dll")] static extern IntPtr GlobalFree(IntPtr pointer);
   [DllImport("winhttp.dll", SetLastError=true, CharSet=CharSet.Unicode)] static extern bool WinHttpDetectAutoProxyConfigUrl(uint flags,out IntPtr url);
   static long Now(){return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();}
-  static Dictionary<string,object> Read(string path){return Json.Deserialize<Dictionary<string,object>>(File.ReadAllText(path));}
+  static Dictionary<string,object> Read(string path){lock(FileLock){return Json.Deserialize<Dictionary<string,object>>(File.ReadAllText(path));}}
   static string Text(Dictionary<string,object> data,string key){object value;return data.TryGetValue(key,out value)?Convert.ToString(value):"";}
   static long Number(Dictionary<string,object> data,string key){object value;return data.TryGetValue(key,out value)?Convert.ToInt64(value):0;}
   static bool Flag(Dictionary<string,object> data,string key){object value;return data.TryGetValue(key,out value)&&Convert.ToBoolean(value);}
-  static void Write(string path,object data){string temp=path+".tmp";File.WriteAllText(temp,Json.Serialize(data));if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);}
+  static void Write(string path,object data){lock(FileLock){string temp=path+".tmp";File.WriteAllText(temp,Json.Serialize(data));if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);}}
   static string Sha(X509Certificate2 cert){using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(cert.RawData)).Replace("-","").ToLowerInvariant();}
   public class ProxyState { public uint flags;public string pac;public string server;public string bypass; }
   static ProxyState GetProxy(){
@@ -91,7 +92,7 @@ internal class WindowsBrowserRouting {
   static void RemoveRoot(X509Certificate2 cert,string directory){using(var store=new X509Store(StoreName.Root,StoreLocation.CurrentUser)){store.Open(OpenFlags.ReadWrite);foreach(var candidate in store.Certificates)if(Sha(candidate)==Sha(cert)){
     Write(Path.Combine(directory,"native-"+Process.GetCurrentProcess().Id+".cert-operation.json"),new{pid=Process.GetCurrentProcess().Id,thumbprint=cert.Thumbprint,action="remove",at=Now()});store.Remove(candidate);
   }}}
-  static ProxyState Original(Dictionary<string,object> journal){return Json.ConvertToType<ProxyState>(journal["original"]);}
+  static ProxyState Original(Dictionary<string,object> journal){lock(FileLock){return Json.ConvertToType<ProxyState>(journal["original"]);}}
   static bool Same(ProxyState a,ProxyState b){return a.flags==b.flags&&a.pac==b.pac&&a.server==b.server&&a.bypass==b.bypass;}
   static bool Alive(int pid,long started){try{return Process.GetProcessById(pid).StartTime.ToUniversalTime().Ticks==started;}catch{return false;}}
   static void Restore(Dictionary<string,object> journal,string path){
@@ -119,7 +120,8 @@ internal class WindowsBrowserRouting {
     int parent=(int)Number(manifest,"pid");var process=Process.GetProcessById(parent);long parentStarted=process.StartTime.ToUniversalTime().Ticks;
     var cert=Certificate(manifest);var original=GetProxy();string conflict=Conflict(original,true);if(conflict!="")throw new Exception(conflict);
     var self=Process.GetCurrentProcess();var journal=new Dictionary<string,object>(manifest);journal["original"]=original;journal["addedRoot"]=false;journal["complete"]=false;journal["helperPid"]=self.Id;journal["helperStarted"]=self.StartTime.ToUniversalTime().Ticks;journal["ownedPac"]="";Write(journalPath,journal);
-    bool active=false;int changed=0;long revision=0;
+    bool active=false,statusDone=false,effective=false;string phase="awaiting_authorization",failure=null;int changed=0;long revision=0;
+    var heartbeat=new Timer(delegate {lock(FileLock){if(!statusDone)Write(statusPath,new{at=Now(),phase=phase,active=effective,effective=effective,services=new[]{"Windows · proxy del usuario"}});}},null,0,1000);
     NetworkChange.NetworkAddressChanged+=delegate {Interlocked.Exchange(ref changed,1);};
     try {
       for(;;){
@@ -128,23 +130,27 @@ internal class WindowsBrowserRouting {
         bool desired=Flag(lease,"active");long nextRevision=Number(lease,"revision");
         if(desired&&!active){
           conflict=Conflict(GetProxy(),true);if(conflict!="")throw new Exception(conflict);
-          journal["addedRoot"]=!Trusted(cert);journal["complete"]=false;Write(journalPath,journal);if(Flag(journal,"addedRoot"))AddRoot(cert);
+          phase="installing_root";effective=false;journal["addedRoot"]=!Trusted(cert);journal["complete"]=false;Write(journalPath,journal);if(Flag(journal,"addedRoot"))AddRoot(cert);
+          if(!Trusted(cert))throw new Exception("Windows no autorizó la confianza de la CA.");
+          var latest=Read(leasePath);
+          if(!Flag(latest,"active")||Flag(latest,"closed")||Now()-Number(latest,"at")>7000||!Alive(parent,parentStarted)){phase="removing_root";Restore(journal,journalPath);continue;}
           revision=nextRevision;journal["priorOwnedPac"]=Text(journal,"ownedPac");journal["ownedPac"]=pac.GetLeftPart(UriPartial.Path)+"?revision="+revision;Write(journalPath,journal);
           SetProxy(new ProxyState{flags=5,pac=Text(journal,"ownedPac"),server=original.server,bypass=original.bypass});active=true;
-        } else if(!desired&&active){Restore(journal,journalPath);active=false;}
+        } else if(!desired&&active){phase="removing_root";effective=false;Restore(journal,journalPath);active=false;}
         if(active){
           if(Interlocked.Exchange(ref changed,0)==1){conflict=Conflict(original,true);if(conflict!="")throw new Exception(conflict);}
           var expected=new ProxyState{flags=5,pac=Text(journal,"ownedPac"),server=original.server,bypass=original.bypass};
           if(!Same(GetProxy(),expected)||PolicyConflict()!="")throw new Exception("La configuración de red cambió fuera de Usovia. Se detuvo la integración.");
           if(nextRevision!=revision){revision=nextRevision;journal["priorOwnedPac"]=Text(journal,"ownedPac");journal["ownedPac"]=pac.GetLeftPart(UriPartial.Path)+"?revision="+revision;Write(journalPath,journal);expected.pac=Text(journal,"ownedPac");SetProxy(expected);}
         }
-        Write(statusPath,new{at=Now(),phase=active?"active":"paused",active=active,effective=active&&Trusted(cert),services=new[]{"Windows · proxy del usuario"}});
+        phase=active?"active":"paused";effective=active&&Trusted(cert);
         Thread.Sleep(1000);
       }
-      Restore(journal,journalPath);Write(statusPath,new{at=Now(),phase="stopped",active=false,effective=false});
+      phase="removing_root";effective=false;Restore(journal,journalPath);
     } catch(Exception error){
-      try{Restore(journal,journalPath);}catch{}Write(statusPath,new{at=Now(),phase="error",active=false,effective=false,error=error.Message});
+      phase="removing_root";effective=false;try{Restore(journal,journalPath);}catch{}failure=error.Message;
     }
+    finally{lock(FileLock){statusDone=true;}heartbeat.Dispose();Write(statusPath,new{at=Now(),phase=failure==null?"stopped":"error",active=false,effective=false,error=failure});}
   }
   public static int Main(string[] args){try{
     if(args.Length==1&&args[0]=="inspect"){
