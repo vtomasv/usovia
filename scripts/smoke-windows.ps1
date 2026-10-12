@@ -8,10 +8,10 @@ $env:USOVIA_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'Usovia-smoke-result.json'
 $env:USOVIA_HUB_URL = 'https://example.invalid'
 Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 # NSIS /D must be the final argument. This per-user installation does not require elevation.
-$installation = Start-Process -FilePath $installer -ArgumentList @('/S', '/D=' + $installDir) -PassThru -Wait
+$installation = Start-Process -FilePath $installer -ArgumentList ('/S /D=' + $installDir) -PassThru -Wait
 if ($installation.ExitCode -ne 0) { throw "NSIS install failed: $($installation.ExitCode)" }
 $executable = Join-Path $installDir 'Usovia.exe'
-if (-not (Test-Path $executable)) { throw 'Installed executable not found.' }
+if (-not (Test-Path $executable)) { throw "Installed executable not found at the requested NSIS directory: $installDir" }
 $application = Start-Process -FilePath $executable -ArgumentList '--packaging-smoke' -PassThru
 if (-not $application.WaitForExit(480000)) {
   Stop-Process -Id $application.Id -Force
