@@ -2,6 +2,8 @@
 
 El Hub se despliega con la integración Git nativa de Vercel. No se guardan tokens de Vercel en GitHub Actions. El cliente de escritorio se empaqueta y publica por separado; un push del Hub no genera ni firma un instalador.
 
+**Estado de activación:** GitHub Actions está activo en `vtomasv/usovia`. Vercel todavía exige una Login Connection de GitHub para vincular el proyecto existente. La landing ya está publicada mediante CLI; la conexión automática queda pendiente de ese paso del titular.
+
 ## Flujo
 
 1. Un push a `main` ejecuta GitHub Actions: instalación desde el lockfile, TypeScript, pruebas de API/proxy/consentimiento, auditoría de dependencias de producción y build.

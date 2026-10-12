@@ -1,5 +1,7 @@
 # Usovia · Gobierno corporativo de IA
 
+[![Validate Usovia](https://github.com/vtomasv/usovia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/vtomasv/usovia/actions/workflows/ci.yml)
+
 Usovia conecta el aprendizaje cotidiano de los colaboradores con recomendaciones y oportunidades para su organización. Incluye un cliente de escritorio con IA local y un Hub corporativo. La participación es voluntaria y los permisos se autorizan por separado.
 
 [Visitar Usovia](https://usovia-hub-demo.vercel.app) · [Alcance de la versión 1.1](docs/version-1.1.md) · [Despliegue automatizado](docs/deployment.md)
@@ -72,6 +74,8 @@ Los artefactos se generan en `desktop/release/`. Los pesos se descargan por sepa
 ## Pipeline
 
 GitHub Actions verifica Node 22, tipos, pruebas, dependencias de producción y build. Vercel conectado al repositorio publica `main` y ejecuta tipos/pruebas en su propio build. Los instaladores se publican por separado; no se comparten tokens de Vercel con Actions. Consulta [configuración, identidad y rollback](docs/deployment.md).
+
+El repositorio está publicado en [vtomasv/usovia](https://github.com/vtomasv/usovia). CI está activo y validado. La conexión Git de Vercel requiere que el titular vincule GitHub en Authentication; hasta completar ese paso, la publicación existente se realiza por CLI y el despliegue por push no está activo.
 
 ## Código y componentes de terceros
 
