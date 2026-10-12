@@ -9,7 +9,7 @@ concurrency:
 jobs:
   build:
     runs-on: windows-2025
-    timeout-minutes: 35
+    timeout-minutes: 40
     env:
       ONNXRUNTIME_NODE_INSTALL: skip
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -38,7 +38,7 @@ jobs:
           $installer = Get-Item "desktop/release/Usovia-$version-windows-x64-setup.exe"
           $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $($installer.Name)" | Set-Content desktop/release/SHA256SUMS.txt -Encoding utf8
-          @{ id = 'windows-x64'; os = 'windows'; arch = 'x64'; platform = 'Windows 10/11 · 64 bits (Intel/AMD)'; version = $version; url = "https://github.com/vtomasv/usovia/releases/download/desktop-v$version-windows-x64/$($installer.Name)"; sha256 = $hash; bytes = $installer.Length; signed = $false; runtime = 'Ollama 0.40.3 · CPU'; systemBrowser = $false } | ConvertTo-Json | Set-Content desktop/release/windows-release.json -Encoding utf8
+          @{ id = 'windows-x64'; os = 'windows'; arch = 'x64'; platform = 'Windows 10/11 · 64 bits (Intel/AMD)'; version = $version; url = "https://github.com/vtomasv/usovia/releases/download/desktop-v$version-windows-x64/$($installer.Name)"; sha256 = $hash; bytes = $installer.Length; signed = $false; runtime = 'Ollama 0.40.3 · CPU'; systemBrowser = $true; testedBrowsers = @('Chrome','Edge','Firefox') } | ConvertTo-Json | Set-Content desktop/release/windows-release.json -Encoding utf8
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-installer
@@ -50,6 +50,7 @@ jobs:
             desktop/release/SHA256SUMS.txt
             desktop/release/windows-release.json
             desktop/release/windows-verification.json
+            desktop/release/windows-browser-verification.json
             desktop/runtime-windows/runtime-manifest.json
   publish:
     needs: build
@@ -70,5 +71,5 @@ jobs:
           cd artifact/release
           VERSION=$(jq -r .version windows-release.json)
           TAG="desktop-v$VERSION-windows-x64"
-          printf '%s\n' 'Instalador Windows x64 por usuario, con motor local CPU incluido, bandeja del sistema y participación desactivada inicialmente.' 'Verificación nativa: instalación NSIS, ejecución de la aplicación empaquetada, estado cifrado DPAPI, bandeja, cerrar ventana sin salir, inferencia local real y desinstalación.' 'Sin firma Authenticode. No configura el proxy ni los certificados de los otros navegadores de Windows. Gemini en Usovia y API/CLI configuradas utilizan el proxy local autorizado.' > notes.txt
-          gh release create "$TAG" --repo "$REPO" --target "$SOURCE_COMMIT" --title "Usovia $VERSION · Windows x64" --notes-file notes.txt ./*-setup.exe SHA256SUMS.txt windows-release.json windows-verification.json ../runtime-windows/runtime-manifest.json
+          printf '%s\n' 'Instalador Windows x64 por usuario, motor CPU, bandeja y participación desactivada inicialmente.' 'Integración de navegadores mediante CA y PAC del usuario, solo tras autorización; respeta otros proxies y políticas administradas.' 'Chrome, Edge y Firefox probados con TLS estricto, solicitudes y respuestas, sesiones, redacción, exclusión central de proveedores, tráfico ajeno a LLM por conexión directa, pausa, cambios ajenos y muerte del proceso.' 'Los navegadores reales se prueban contra fixtures HTTPS controlados bajo las URLs de proveedores; no se usan cuentas ni login reales de esos proveedores. La captura web de conversación dispone de adaptador Gemini; ChatGPT y Claude web siguen pendientes.' 'Sin firma Authenticode. Windows puede pedir confirmación para instalar o retirar la CA. También se verifica instalación NSIS, DPAPI, inferencia local real y desinstalación.' > notes.txt
+          gh release create "$TAG" --repo "$REPO" --target "$SOURCE_COMMIT" --title "Usovia $VERSION · Windows x64" --notes-file notes.txt ./*-setup.exe SHA256SUMS.txt windows-release.json windows-verification.json windows-browser-verification.json ../runtime-windows/runtime-manifest.json

@@ -10,7 +10,7 @@
     "start": "electron .",
     "package": "npm run build:browser-helper && electron-builder --mac zip dmg --arm64",
     "build:browser-helper": "node ../scripts/build-browser-helper.mjs",
-    "package:win": "electron-builder --win nsis --x64 --publish never",
+    "package:win": "npm run build:windows-browser-helper && electron-builder --win nsis --x64 --publish never",
     "bundle:win": "pwsh -File ../scripts/bundle-runtime-windows.ps1",
     "build:windows-browser-helper": "pwsh -File ../scripts/build-windows-browser-helper.ps1"
   },
@@ -110,7 +110,8 @@
         "es_ES",
         "en_US"
       ],
-      "language": "3082"
+      "language": "3082",
+      "include": "native/windows-installer.nsh"
     }
   },
   "dependencies": {

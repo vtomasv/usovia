@@ -22,8 +22,13 @@ $result = Get-Content $env:USOVIA_SMOKE_OUTPUT | ConvertFrom-Json
 if (-not $result.ok) { throw "Installed application failed: $($result.error)" }
 if (Get-NetTCPConnection -LocalPort 11438 -State Listen -ErrorAction SilentlyContinue) { throw 'Embedded runtime was left running after exit.' }
 Copy-Item $env:USOVIA_SMOKE_OUTPUT 'desktop/release/windows-verification.json'
+$env:USOVIA_BROWSER_FIXTURE = '1'
+$env:USOVIA_BROWSER_HELPER = Join-Path $installDir 'resources/browser-helper/usovia-windows-browser-helper.exe'
+node scripts/test-windows-browsers.mjs
+if ($LASTEXITCODE -ne 0) { throw 'Installed Windows helper failed external-browser verification.' }
+Copy-Item (Join-Path $env:RUNNER_TEMP 'Usovia-browser-fixture/windows-browser-verification.json') 'desktop/release/windows-browser-verification.json'
 $uninstaller = Join-Path $installDir 'Uninstall Usovia.exe'
 if (-not (Test-Path $uninstaller)) { throw 'Uninstaller not registered.' }
 $uninstall = Start-Process $uninstaller -ArgumentList '/S' -PassThru -Wait
 if ($uninstall.ExitCode -ne 0) { throw 'Uninstall failed.' }
-Write-Host "Native verification succeeded: installed app, tray, DPAPI, real local inference, clean exit and uninstaller."
+Write-Host "Native verification succeeded: installed app, tray, DPAPI, real inference, Chrome/Edge/Firefox with strict TLS, restoration and uninstaller."

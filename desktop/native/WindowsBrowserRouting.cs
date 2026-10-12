@@ -103,10 +103,10 @@ internal class WindowsBrowserRouting {
     if(Flag(journal,"addedRoot"))RemoveRoot(cert,Path.GetDirectoryName(path));
     journal["addedRoot"]=false;journal["complete"]=true;Write(path,journal);
   }
-  static void Recover(string directory){
+  static void Recover(string directory,bool requireClean=false){
     int count=0;if(Directory.Exists(directory))foreach(string path in Directory.GetFiles(directory,"*.journal.json")){
       var journal=Read(path);if(Flag(journal,"complete"))continue;
-      if(Alive((int)Number(journal,"helperPid"),Number(journal,"helperStarted")))continue;
+      if(Alive((int)Number(journal,"helperPid"),Number(journal,"helperStarted"))){if(requireClean)throw new Exception("Cierra Usovia y confirma en Windows la retirada de su CA antes de desinstalar.");continue;}
       Restore(journal,path);count++;
     }
     Console.WriteLine(Json.Serialize(new{recovered=count}));
@@ -157,6 +157,7 @@ internal class WindowsBrowserRouting {
       var state=GetProxy();string conflict=Conflict(state,true);Console.WriteLine(Json.Serialize(new{services=new[]{new{name="Windows · proxy del usuario",supported=true,conflict=conflict!="",reason=conflict}},proxy=state}));return 0;
     }
     if(args.Length==2&&args[0]=="recover"){Recover(Path.GetFullPath(args[1]));return 0;}
+    if(args.Length==3&&args[0]=="recover"&&args[2]=="clean"){Recover(Path.GetFullPath(args[1]),true);return 0;}
     if(args.Length==2&&args[0]=="authorize"){
       string path=Path.GetFullPath(args[1]);if(path.Contains("\"")||path.Contains("\r")||path.Contains("\n"))throw new Exception("Ruta inválida.");
       Process.Start(new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName,"run \""+path+"\""){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden});Console.WriteLine("{\"authorization\":\"started\"}");return 0;
