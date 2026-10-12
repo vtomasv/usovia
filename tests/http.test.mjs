@@ -14,7 +14,7 @@ test('HTTP: session auth, CSRF, input validation and complete participant lifecy
   process.env.ADMIN_PASSWORD='synthetic-local-test-password';process.env.SESSION_SECRET='synthetic-session-secret-only-for-tests-32';process.env.PUBLIC_HUB_URL='http://127.0.0.1:5173';
   const dir=await mkdtemp(join(tmpdir(),'usovia-http-'));const service=new HubService(new FileStore(join(dir,'state.json')));
   const server=createServer((req,res)=>handle(req,res,service));server.listen(0,'127.0.0.1');await once(server,'listening');
-  t.after(async()=>{await new Promise(r=>server.close(r));await rm(dir,{recursive:true,force:true});for(const [key,value]of Object.entries(old))if(value===undefined)delete process.env[key];else process.env[key]=value;});
+  t.after(async()=>{await new Promise(r=>server.close(r));service.analytics.repository.close();await rm(dir,{recursive:true,force:true});for(const [key,value]of Object.entries(old))if(value===undefined)delete process.env[key];else process.env[key]=value;});
   const url=`http://127.0.0.1:${server.address().port}/api/`;
   const request=(path,{method='GET',body,headers={}}={})=>fetch(url+path,{method,headers:{'Content-Type':'application/json',...headers},...(body===undefined?{}:{body:JSON.stringify(body)})});
   assert.equal((await request('overview')).status,401);assert.equal((await request('conversations')).status,401);assert.equal((await request('providers')).status,401);assert.equal((await request('client-policy')).status,401);

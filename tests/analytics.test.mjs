@@ -23,11 +23,13 @@ async function fixture(t) {
   const dir = await mkdtemp(join(tmpdir(), 'usovia-analytics-'));
   const store = new FileStore(join(dir, 'state.json')),
     hub = new HubService(store);
+  const additionalRepositories = [];
   t.after(async () => {
+    for (const repository of additionalRepositories) repository.close();
     hub.analytics.repository.close();
     await rm(dir, { recursive: true, force: true });
   });
-  return { dir, store, hub };
+  return { dir, store, hub, additionalRepositories };
 }
 async function participant(hub, department = 'Operaciones') {
   const a = await hub.createAccount({
@@ -204,13 +206,13 @@ test('account directory searches accents and groups on the server, pages results
   assert.ok(!JSON.stringify(first).includes('tokenHash'));
 });
 test('semantic leases are exclusive across connections and old completion cannot overwrite a changed document', async (t) => {
-  const { hub, dir } = await fixture(t),
+  const { hub, dir, additionalRepositories } = await fixture(t),
     i = await participant(hub);
   await session(hub, i, { accepted: false });
   const snapshot = await hub.analytics.snapshot(),
     repository = hub.analytics.repository,
     other = new AnalyticsRepository({ path: join(dir, 'state.json.analytics.sqlite') });
-  t.after(() => other.close());
+  additionalRepositories.push(other);
   const [a, b] = await Promise.all([repository.claim(1, 'worker-a'), other.claim(1, 'worker-b')]);
   assert.equal(a.length + b.length, 1);
   const job = a[0] || b[0];
@@ -437,7 +439,7 @@ test('admin-only analytics and binary exports reject client bearer credentials a
 });
 
 test('worker retries are bounded, lost leases are reclaimed, tenants are isolated and derived retention expires', async (t) => {
-  const { hub, dir } = await fixture(t),
+  const { hub, dir, additionalRepositories } = await fixture(t),
     i = await participant(hub);
   await session(hub, i, { accepted: false });
   const { sessions } = await hub.analytics.snapshot();
@@ -452,10 +454,7 @@ test('worker retries are bounded, lost leases are reclaimed, tenants are isolate
     tenant: 'team-b',
     clock: () => now,
   });
-  t.after(() => {
-    repository.close();
-    other.close();
-  });
+  additionalRepositories.push(repository, other);
   await repository.reconcile(sessions, MODEL_KEY);
   assert.equal((await other.entries()).documents.length, 0);
   assert.equal((await other.claim()).length, 0);

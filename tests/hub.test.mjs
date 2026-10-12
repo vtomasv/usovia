@@ -8,7 +8,7 @@ import {FileStore} from '../server/store.mjs';
 import {HubService} from '../server/service.mjs';
 import {analyze,redact} from '../shared/analysis.mjs';
 import {ClientController,initialClient,normalizeHub} from '../desktop/controller.mjs';
-async function fixture(t){const dir=await mkdtemp(join(tmpdir(),'usovia-test-'));t.after(()=>rm(dir,{recursive:true,force:true}));return new HubService(new FileStore(join(dir,'hub.json')));}
+async function fixture(t){const dir=await mkdtemp(join(tmpdir(),'usovia-test-'));const service=new HubService(new FileStore(join(dir,'hub.json')));t.after(async()=>{service.analytics.repository.close();await rm(dir,{recursive:true,force:true});});return service;}
 async function participant(service){const a=await service.createAccount({department:'Operaciones',country:'Chile',office:'Santiago',tags:['piloto']});const i=await service.activate({activationCode:a.activationCode,platform:'darwin'});return {...i,account:a.account};}
 test('redacts email, RUT and credentials without needing inference',()=>{const r=redact('persona@example.invalid RUT 12.345.678-5 api_key=abcdefghijklmnop123456');assert.equal(r.count,3);assert.ok(r.hasSecret);assert.ok(!r.text.includes('example.invalid'));assert.ok(!r.text.includes('abcdefghijklmnop'));});
 test('recommendations are explainable and contain no original credential',()=>{const r=analyze('Redacta un correo api_key=abcdefghijklmnop123456');assert.equal(r.task,'redaccion');assert.equal(r.method,'reglas_cpu_v1');assert.ok(r.tips.some(t=>t.id==='privacy'));assert.ok(!JSON.stringify(r).includes('abcdefghijklmnop'));});

@@ -34,7 +34,7 @@ test('Windows cmd launcher executes an npm-style CLI with scoped variables and s
   const entry=join(directory,'entry.cjs');await writeFile(entry,'process.argv.splice(1,1);require(process.argv[1]);');
   const launcher=cliLauncher({...input,platform:'win32',entry});
   const file=join(directory,launcher.name);await writeFile(file,launcher.content);
-  execFileSync('cmd.exe',['/d','/s','/c',`""${file}" "argument with spaces""`],{env:{...process.env,PATH:directory+';'+process.env.PATH,USOVIA_CLI_CHECK:output},windowsHide:true});
+  execFileSync('cmd.exe',['/d','/s','/c',`""${file}" "argument with spaces""`],{env:{...process.env,PATH:directory+';'+process.env.PATH,USOVIA_CLI_CHECK:output},windowsHide:true,windowsVerbatimArguments:true});
   const result=JSON.parse(await readFile(output,'utf8'));
   assert.equal(result.proxy,input.proxyUrl);assert.equal(result.ca,input.caPath);assert.deepEqual(result.args,['argument with spaces']);
   assert.notEqual(process.env.HTTPS_PROXY,input.proxyUrl);
