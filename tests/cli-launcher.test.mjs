@@ -5,7 +5,7 @@ import {mkdtemp,writeFile,readFile,rm,mkdir} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
-const input={proxyUrl:'http://usovia:synthetic@127.0.0.1:11440',caPath:"C:\\Account with spaces & 10%\\root.pem",executable:process.execPath,entry:'C:\\Usovia\\cli-entry.mjs'};
+const input={proxyUrl:'http://usovia:synthetic@127.0.0.1:11440',caPath:"C:\\Account á with spaces & 10%\\root.pem",executable:process.execPath,entry:'C:\\Usovia\\cli-entry.mjs'};
 test('Windows launcher isolates trust and proxy without bypassing OS TLS verification',()=>{
   const {name,content}=cliLauncher({...input,platform:'win32'});
   assert.ok(name.endsWith('.cmd'));
@@ -24,7 +24,7 @@ test('Mac launcher retains quoted argv and embedded Node normalization',()=>{
   assert.ok(content.endsWith('"$@"\n'));
 });
 test('Windows cmd launcher executes an npm-style CLI with scoped variables and spaced arguments',{skip:process.platform!=='win32'?'requires Windows cmd':false},async t=>{
-  const directory=await mkdtemp(join(tmpdir(),'usovia cli & 10%-'));
+  const directory=await mkdtemp(join(tmpdir(),'usovia cli á & 10%-'));
   t.after(()=>rm(directory,{recursive:true,force:true}));
   const cliDir=join(directory,'node_modules/@google/gemini-cli/dist');await mkdir(cliDir,{recursive:true});
   const output=join(directory,'result.json');

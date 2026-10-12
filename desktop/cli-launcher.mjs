@@ -8,7 +8,7 @@ export function cliLauncher({platform, proxyUrl, caPath, executable, entry}) {
   if (platform === 'win32') return {
     name: 'Gemini con Usovia.cmd',
     content: [
-      '@echo off', 'setlocal DisableDelayedExpansion',
+      '@echo off', 'setlocal DisableDelayedExpansion', 'chcp 65001 >nul',
       'rem Proxy exclusivo de esta ventana. No modifica la red ni los certificados de Windows.',
       'set "HTTPS_PROXY=' + batchValue(proxyUrl) + '"',
       'set "HTTP_PROXY=%HTTPS_PROXY%"',
