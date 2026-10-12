@@ -40,7 +40,7 @@ test('PAC service, lease and installer contain no private key, upstream keys or 
   await routing.stop();const closed=JSON.parse(await readFile(manifest.leasePath,'utf8'));assert.equal(closed.active,false);assert.equal(closed.closed,true);
 });
 test('native helper restores prior dictionaries, preserves foreign edits and rejects active corporate proxies',{skip:process.platform!=='darwin'?'requires compiled macOS helper':false},()=>{
-  const result=JSON.parse(execFileSync(new URL('../desktop/native/bin/usovia-browser-helper',import.meta.url).pathname,['self-test'],{encoding:'utf8'}));assert.equal(result.selfTest,'passed');assert.equal(result.cases,7);
+  const result=JSON.parse(execFileSync(new URL('../desktop/native/bin/usovia-browser-helper',import.meta.url).pathname,['self-test'],{encoding:'utf8'}));assert.equal(result.selfTest,'passed');assert.equal(result.cases,11);
   assert.throws(()=>execFileSync(new URL('../desktop/native/bin/usovia-browser-helper',import.meta.url).pathname,['run','/nonexistent'],{stdio:'pipe'}));
 });
 

@@ -86,6 +86,32 @@ func inspect() throws {
   try emit(["platform":"darwin","services":rows,"pendingRecovery":pending])
 }
 var authorizedOwner:uid_t? = nil
+func authorizationReply(_ fd:Int32, owner:uid_t, timeout:Double) throws {
+  let deadline=Date().addingTimeInterval(timeout);var data=Data()
+  while Date()<deadline {
+    var event=pollfd(fd:fd,events:Int16(POLLIN),revents:0)
+    let available=poll(&event,1,1000)
+    if available<0 {if errno==EINTR {continue};throw Failure("No se pudo verificar el inicio del ayudante.")}
+    if available==0 {continue}
+    var byte:UInt8=0;let count=read(fd,&byte,1)
+    try require(count==1,"El ayudante terminó antes de confirmar su autorización.")
+    if byte==10 {
+      guard let reply=try? JSONSerialization.jsonObject(with:data) as? [String:Any] else {throw Failure("La respuesta del ayudante no es válida.")}
+      if let error=reply["error"] as? String {throw Failure(String(error.prefix(1000)))}
+      try require(reply["authorization"] as? String=="ready" && reply["uid"] as? UInt32==owner,"El ayudante no confirmó la sesión autorizada.")
+      return
+    }
+    data.append(byte);try require(data.count<4096,"La respuesta del ayudante es demasiado grande.")
+  }
+  throw Failure("El ayudante no confirmó su inicio a tiempo. Revisa la autorización de macOS.")
+}
+func readyAndDetach() throws {
+  try emit(["authorization":"ready","uid":authorizedOwner ?? getuid(),"helperPid":getpid()]);fflush(stdout)
+  // The parent can now release its AuthorizationRef. The root session is governed
+  // by the user's lease, not the lifetime of its startup communication channel.
+  let fd=open("/dev/null",O_RDWR);try require(fd>=0,"No se pudo finalizar el inicio del ayudante.")
+  defer{close(fd)};try require(dup2(fd,STDIN_FILENO)>=0 && dup2(fd,STDOUT_FILENO)>=0,"No se pudo separar el ayudante de su iniciador.")
+}
 func adminRights(_ authorization: AuthorizationRef, interactive: Bool) throws {
   let result = "system.privilege.admin".withCString { name -> OSStatus in
     var item=AuthorizationItem(name:name,valueLength:0,value:nil,flags:0)
@@ -109,12 +135,17 @@ func authorize(_ command: String, manifest: String? = nil) throws {
   defer{duplicated.forEach{free($0)}}
   var pointers=duplicated+[nil]
   let executable=URL(fileURLWithPath:CommandLine.arguments[0]).resolvingSymlinksInPath().path
+  var channel:Int32 = -1
   let result=executable.withCString { path in
     pointers.withUnsafeMutableBufferPointer { arguments in
-      UsoviaExecuteAuthorized(authorization,path,arguments.baseAddress!)
+      UsoviaExecuteAuthorized(authorization,path,arguments.baseAddress!,&channel)
     }
   }
   try require(result==errAuthorizationSuccess,"macOS no pudo iniciar el ayudante autorizado.")
+  try require(channel>=0,"No se pudo abrir la confirmación del ayudante.");defer{close(channel)}
+  // Freeing the caller's reference immediately races the root child's
+  // AuthorizationCopyPrivilegedReference. Keep it until startup is acknowledged.
+  try authorizationReply(channel,owner:getuid(),timeout:command=="recover-gui" ? 600:30)
   try emit(["authorization":"started"])
 }
 func verifyPrivilegedAuthorization() throws {
@@ -252,7 +283,6 @@ func recover() throws {
       try atomic(dir+"/status.json",data:json(["at":Date().timeIntervalSince1970*1000,"uid":j["uid"] ?? 0,"needsRecovery":false,"active":false,"effective":false,"phase":"recovered","services":[]]),mode:0o644)
     }
   }
-  print("Sesiones pendientes restauradas. No ejecutar mientras otra sesión Usovia esté activa.")
 }
 func selfTest() throws {
   let prior:[String:Any]=["HTTPEnable":0,"HTTPProxy":"company.example","HTTPPort":8080,"ExceptionsList":["*.local"],pacEnable:0,pacURL:"https://company.example/disabled.pac"]
@@ -271,7 +301,17 @@ func selfTest() throws {
   try oldData.write(to:URL(fileURLWithPath:lease));try newData.write(to:URL(fileURLWithPath:replacement))
   let opened=try privateFile(lease,uid:getuid(),afterOpen:{try require(rename(replacement,lease)==0,"No se pudo renovar lease de prueba.")})
   try require(opened==oldData && privateFile(lease,uid:getuid())==newData,"La renovación atómica invalidó un lease abierto válido.")
-  try emit(["selfTest":"passed","cases":7])
+  func checkReply(_ payload:String) throws {
+    var fds:[Int32]=[-1,-1];try require(pipe(&fds)==0,"No se pudo preparar el canal de prueba.")
+    defer{close(fds[0])};let bytes=Array(payload.utf8);_ = bytes.withUnsafeBytes{write(fds[1],$0.baseAddress,bytes.count)};close(fds[1])
+    try authorizationReply(fds[0],owner:getuid(),timeout:1)
+  }
+  try checkReply("{\"authorization\":\"ready\",\"uid\":\(getuid())}\n")
+  func refused(_ payload:String) -> Bool {do{try checkReply(payload);return false}catch{return true}}
+  try require(refused("{\"authorization\":\"failed\",\"error\":\"Autorización de prueba denegada.\"}\n"),"Se aceptó un error como inicio correcto.")
+  try require(refused("{\"authorization\":\"ready\",\"uid\":0}\n"),"Se aceptó una sesión de otro usuario.")
+  try require(refused("{\"authorization\":\"ready\""),"Un cierre sin confirmación se aceptó como éxito.")
+  try emit(["selfTest":"passed","cases":11])
 }
 signal(SIGINT){_ in interrupted=true};signal(SIGTERM){_ in interrupted=true};signal(SIGHUP){_ in interrupted=true}
 do {
@@ -281,10 +321,14 @@ do {
   case "self-test":try selfTest()
   case "authorize":try require(args.count==3,"Falta autorización local.");try authorize("run-gui",manifest:args[2])
   case "authorize-recovery":try authorize("recover-gui")
-  case "recover-gui":try verifyPrivilegedAuthorization();try recover()
-  case "run-gui":try verifyPrivilegedAuthorization();try require(args.count==3,"Falta permiso local.");let s=try RoutingSession(args[2]);do{try s.run()}catch{try? s.restore();throw error}
-  case "recover":try recover()
+  case "recover-gui":try verifyPrivilegedAuthorization();try recover();try readyAndDetach()
+  case "run-gui":try verifyPrivilegedAuthorization();try require(args.count==3,"Falta permiso local.");let s=try RoutingSession(args[2]);try readyAndDetach();do{try s.run()}catch{try? s.restore();throw error}
+  case "recover":try recover();print("Sesiones pendientes restauradas.")
   case "run":try require(args.count==3,"Falta manifest local.");let s=try RoutingSession(args[2]);do{try s.run()}catch{try? s.restore();throw error}
   default:throw Failure("Uso: inspect | self-test | run MANIFEST | recover")
   }
-}catch{fputs(((error as? Failure)?.message ?? "El ayudante no pudo completar la operación.")+"\n",stderr);exit(1)}
+}catch{
+  let message=(error as? Failure)?.message ?? "El ayudante no pudo completar la operación."
+  if ["run-gui","recover-gui"].contains(CommandLine.arguments.dropFirst().first ?? "") {try? emit(["authorization":"failed","error":message]);fflush(stdout)}
+  fputs(message+"\n",stderr);exit(1)
+}

@@ -97,7 +97,7 @@ async function enableSystemBrowsers(){
   const activation=await systemRouting.prepare(authority);
   if(quitting||generation!==controller.generation||!controller.state.consent.capture){await pauseSystemBrowsers();return snapshot();}
   await configureSystemBrowsers(controller.state.providerPolicy);
-  try{await systemRouting.authorize(activation);}catch(e){systemRouting.requested=false;await pauseSystemBrowsers();throw e;}
+  try{await systemRouting.authorize(activation);controller.state.error=null;}catch(e){systemRouting.requested=false;await pauseSystemBrowsers();throw e;}
   await push();return snapshot();
 }
 function configureProxy(options){const generation=controller.generation;proxyWork=proxyWork.catch(()=>{}).then(()=>!quitting&&generation===controller.generation?configureProxyNow(options):undefined);return proxyWork;}

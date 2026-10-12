@@ -24,4 +24,10 @@ Cerrar otras instancias de Usovia y ejecutar `node scripts/smoke-macos.mjs` para
 
 Las credenciales permanecen en el llavero de este host. Este flujo no configura un runner Mac permanente ni exporta certificados a GitHub Actions. Una futura automatización en runners macOS necesitará secretos de distribución y autorización específica para alojarlos en ese servicio.
 
+## Confirmación del lanzamiento privilegiado
+
+Desde el parche 1.3.1, el iniciador conserva su AuthorizationRef hasta que el proceso privilegiado confirma que recuperó la autorización, comprobó los derechos y preparó el estado de la sesión. Liberarla al regresar de AuthorizationExecuteWithPrivileges provocaba una carrera: una comprobación gráfica de solo diagnóstico reprodujo `-60005` en AuthorizationCopyPrivilegedReference al liberar antes del inicio, frente a `0` al esperar la confirmación. El fallo ocurría antes de instalar CA o PAC y el cliente anterior terminaba mostrando un error genérico tras tres minutos.
+
+El canal de inicio usa el pipe de Authorization Services, valida usuario, JSON acotado y cierre sin confirmación, y transmite los errores del proceso privilegiado al cliente. Tras confirmar, el ayudante separa stdin/stdout de ese canal y conserva el lease del cliente como control de la sesión. La recuperación espera a completar la restauración; no se presenta como terminada al lanzar otro proceso. La firma/notarización y el autotest de funciones puras por sí solos no validan este lanzamiento gráfico real.
+
 Fuentes: [Developer ID de Apple](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/), [notarización de Apple](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution), [flujo personalizado de notarización](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow), [electron-builder v26](https://www.electron.build/v26/docs/mac/).
