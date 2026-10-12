@@ -151,8 +151,9 @@ export function DesktopDownload({
           )}
           {selected.os === 'windows' && (
             <p className="dd-coverage">
-              Windows incluye chat local, Gemini dentro de Usovia y API/CLI configuradas. Esta
-              edición no instala certificados ni modifica el proxy de otros navegadores.
+              {selected.systemBrowser
+                ? 'Windows integra Chrome, Edge y Firefox cuando usan el proxy y la confianza TLS del sistema. Activa la integración desde el cliente y confirma la CA en Windows. La captura web de conversaciones dispone de adaptador Gemini; ChatGPT y Claude web siguen pendientes.'
+                : 'Windows incluye chat local, Gemini dentro de Usovia y API/CLI configuradas. Esta edición no instala certificados ni modifica el proxy de otros navegadores.'}
             </p>
           )}
           {selected.sha256 && (

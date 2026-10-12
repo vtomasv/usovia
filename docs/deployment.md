@@ -42,7 +42,7 @@ Las variables heredadas del proyecto incluyen acceso a producción en otros ento
 
 ## Distribución de escritorio
 
-Se distribuyen macOS Apple Silicon sin firma Developer ID/notarización y Windows x64 sin Authenticode. Windows se compila y publica mediante el workflow nativo bajo demanda; no hay distribución Linux ni publicación automática de una CA. La nueva autorización gráfica de navegadores requiere todavía una validación completa en un Mac desbloqueado. Antes de distribución gestionada, firma/notariza y sustituye el ayudante heredado por un servicio macOS moderno.
+Se distribuyen macOS Apple Silicon sin firma Developer ID/notarización y Windows x64 sin Authenticode. Windows se compila y publica mediante el workflow nativo bajo demanda, con prueba de captura en Chrome/Edge/Firefox y limpieza de sus CA; no hay distribución Linux ni publicación automática de una CA. La nueva autorización gráfica de navegadores requiere todavía una validación completa en un Mac desbloqueado. Antes de distribución gestionada, firma/notariza y sustituye el ayudante heredado por un servicio macOS moderno.
 
 ## Procesamiento semántico
 

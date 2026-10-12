@@ -554,8 +554,8 @@ export function App() {
                   navegador de Usovia y API/CLI configuradas con su proxy TLS. Los proveedores y
                   rutas de generación se habilitan en la central. Los navegadores que usan proxy y
                   certificados de macOS pueden integrarse con autorización local en el cliente 1.1.
-                  Windows ofrece Gemini dentro de Usovia y API/CLI configuradas; todavía no integra
-                  los demás navegadores del sistema. La captura web está disponible para Gemini;
+                  Windows 1.3 incorpora una integración autorizada para los navegadores que usan el
+                  proxy y la confianza TLS del sistema. La captura web está disponible para Gemini;
                   ChatGPT y Claude web requieren adaptadores adicionales.
                 </p>
               </div>

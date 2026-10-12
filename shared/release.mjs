@@ -13,17 +13,22 @@ export const desktopReleases=[
     "bytes": 305177337
   },
   {
-    "version": "1.2.0",
-    "runtime": "Ollama 0.40.3 · CPU",
-    "platform": "Windows 10/11 · 64 bits (Intel/AMD)",
-    "url": "https://github.com/vtomasv/usovia/releases/download/desktop-v1.2.0-windows-x64/Usovia-1.2.0-windows-x64-setup.exe",
-    "signed": false,
-    "bytes": 129674275,
-    "sha256": "c728671ecd83305a37c15fff765817cf3dd9e78dfa4af98fc9c11a011fadb7d0",
-    "id": "windows-x64",
     "os": "windows",
-    "systemBrowser": false,
-    "arch": "x64"
+    "runtime": "Ollama 0.40.3 · CPU",
+    "signed": false,
+    "platform": "Windows 10/11 · 64 bits (Intel/AMD)",
+    "sha256": "18fb66abd02c12949574c33aa31ff2185db5fe30f3e9b8cc64d6640a32866c9e",
+    "testedBrowsers": [
+      "Chrome",
+      "Edge",
+      "Firefox"
+    ],
+    "url": "https://github.com/vtomasv/usovia/releases/download/desktop-v1.3.0-windows-x64/Usovia-1.3.0-windows-x64-setup.exe",
+    "systemBrowser": true,
+    "arch": "x64",
+    "id": "windows-x64",
+    "version": "1.3.0",
+    "bytes": 129686025
   }
 ];
 // Legacy clients expect a single Mac release.
