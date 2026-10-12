@@ -1,0 +1,16 @@
+{
+  "name": "usovia-semantic-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node worker.mjs",
+    "once": "node worker.mjs --once"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.1"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}

@@ -4,12 +4,12 @@ El repositorio público es [vtomasv/usovia](https://github.com/vtomasv/usovia). 
 
 ## Flujo
 
-1. Un push a `main` o PR ejecuta CI: instalación desde el lockfile, formato, TypeScript, pruebas de API/proxy/consentimiento, auditoría de dependencias de producción y build.
+1. Un push a `main` o PR ejecuta CI: instalación desde el lockfile, formato, TypeScript, pruebas de API/proxy/consentimiento, auditoría de dependencias de producción del Hub y del worker privado, sintaxis del worker y build.
 2. Revisa el resultado del CI y los cambios antes de publicar.
 3. En la máquina autenticada y vinculada al proyecto correcto, ejecuta `npm run deploy`. El script `predeploy` comprueba formato, tipos y pruebas. El build de Vercel vuelve a validar tipos y pruebas antes de publicar.
 4. Verifica la URL de producción, `/api/health`, el acceso administrativo y la descarga. Un despliegue fallido conserva el anterior. Para revertir, promueve una versión anterior desde Vercel y revierte el commit mediante una nueva confirmación revisable.
 
-En Linux se ejecutan 66 pruebas y se omiten explícitamente las dos que requieren macOS. En el Mac con ayudante compilado se ejecutan las 68. El runner elimina las credenciales de servicios heredadas y falla si faltan los archivos de prueba.
+En Linux se ejecutan 78 pruebas y se omiten explícitamente las dos que requieren macOS. En el Mac con ayudante compilado se ejecutan las 80. El runner elimina las credenciales de servicios heredadas y falla si faltan los archivos de prueba.
 
 El cliente de escritorio se empaqueta y publica por separado. Un push o despliegue del Hub no genera ni firma un instalador.
 
@@ -43,3 +43,7 @@ Las variables heredadas del proyecto incluyen acceso a producción en otros ento
 ## Distribución de escritorio
 
 La versión actual es macOS Apple Silicon sin firma Developer ID ni notarización. No hay build automático de Windows/Linux ni publicación automática de una CA. La nueva autorización gráfica de navegadores requiere todavía una validación completa en un Mac desbloqueado. Antes de distribución gestionada, firma/notariza y sustituye el ayudante heredado por un servicio macOS moderno.
+
+## Worker privado
+
+El proceso semántico no se despliega en Vercel. Requiere un host persistente privado con la revisión de modelo aprobada y acceso al mismo PostgreSQL/tenant del Hub. Consulta [operación analítica](analytics.md). El despliegue web puede mostrar categorías/revisiones y exportar sin worker, pero los vínculos semánticos esperan embeddings reales; se informa esa cobertura. La actualización analítica se probó con QA sintética y PostgreSQL local aislado; no se ejecutaron pruebas con la conexión de producción.

@@ -4,6 +4,7 @@ import {dirname} from 'node:path';
 export const emptyState=()=>({schemaVersion:1,accounts:[],installations:[],events:[],audit:[]});
 export class FileStore{
   constructor(path){this.path=path;this.tail=Promise.resolve();}
+  async read(fn){await this.tail;let state;try{state=JSON.parse(await readFile(this.path,'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;state=emptyState();}return fn(state);}
   async transact(fn){
     let release;const previous=this.tail;this.tail=new Promise(r=>release=r);await previous;
     try{
@@ -24,6 +25,7 @@ export class PostgresStore{
     })().catch(e=>{this.ready=null;throw e;});
     return this.ready;
   }
+  async read(fn){await this.init();const [row]=await this.sql`SELECT payload FROM usovia_demo_state WHERE tenant_id=${this.tenant}`;return fn(row.payload);}
   async transact(fn){
     await this.init();
     return this.sql.begin(async sql=>{

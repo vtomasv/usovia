@@ -4,7 +4,7 @@
 
 Usovia conecta el aprendizaje cotidiano de los colaboradores con recomendaciones y oportunidades para su organización. Incluye un cliente de escritorio con IA local y un Hub corporativo. La participación es voluntaria y los permisos se autorizan por separado.
 
-[Visitar Usovia](https://usovia-hub-demo.vercel.app) · [Alcance de la versión 1.1](docs/version-1.1.md) · [Despliegue automatizado](docs/deployment.md)
+[Visitar Usovia](https://usovia-hub-demo.vercel.app) · [Alcance de la versión 1.1](docs/version-1.1.md) · [CI y publicación manual](docs/deployment.md)
 
 ## Qué incluye
 
@@ -12,7 +12,11 @@ Usovia conecta el aprendizaje cotidiano de los colaboradores con recomendaciones
 - Cliente Electron para macOS Apple Silicon, motor Ollama incluido, icono en barra de menús y ventana que puede cerrarse sin finalizar la aplicación.
 - Captura autorizada de solicitudes y, con permiso adicional, respuestas; texto redactado y recomendaciones mediante reglas ligeras en CPU.
 - Proxy TLS selectivo para proveedores del catálogo admitido. La central configura proveedores y rutas de generación; no habilita la captura del participante remotamente.
-- Consola con conversaciones ordenadas, filtros y agrupaciones por cuenta seudónima, departamento, sucursal y etiqueta.
+- Dashboard de inteligencia de uso: categorías, procesos recurrentes, cobertura de captura y resultados con evidencia.
+- Mapa semántico real con embeddings multilingües en un worker privado de CPU, independiente de Vercel; sin inferencia externa.
+- Biblioteca de prompts/respuestas con aceptación explícita y validación humana versionada; una respuesta HTTP 200 no significa éxito.
+- Directorio con búsqueda paginada por cuenta seudónima y grupos; conversaciones completas por departamento, sucursal y etiqueta.
+- Exportación Parquet real de turnos, sesiones y soluciones, con texto opcional, esquema y archivos partidos.
 - Cuentas con ID de activación de un solo uso, permisos revocables, estado con fecha y eliminación de aportes.
 - API Node en Vercel y persistencia PostgreSQL; almacenamiento JSON local para desarrollo.
 
@@ -34,10 +38,12 @@ flowchart LR
   Client --> Rules[Clasificación y redacción CPU]
   Rules -->|HTTPS + permisos| Hub[Hub en Vercel]
   Hub --> DB[(PostgreSQL)]
-  Hub --> Console[Consola y recomendaciones]
+  Worker[Worker privado de embeddings] --> DB
+  DB --> Console[Dashboard semántico y soluciones]
+  Console --> Parquet[Exportación Parquet]
 ```
 
-El motor Ollama es un componente independiente; Usovia no es un fork de Ollama y no incorpora Plano en producción. La base de datos actual utiliza una fila JSONB por tenant con bloqueo transaccional: es una arquitectura para instalaciones pequeñas, pendiente de normalización y aislamiento de mayor escala. La consola utiliza una sesión administrativa; SSO/RBAC granular son pendientes.
+El motor Ollama es un componente independiente; Usovia no es un fork de Ollama y no incorpora Plano en producción. La ingesta conserva una fila JSONB por tenant con bloqueo transaccional; las lecturas son independientes y los derivados analíticos utilizan tablas relacionales de cola, vectores, revisiones y exportaciones. Sigue siendo una arquitectura para instalaciones pequeñas, pendiente de normalizar la ingesta y reforzar el aislamiento. El historial mantiene siete días y hasta 500 turnos por espacio. La consola utiliza una sesión administrativa; SSO/RBAC granular son pendientes.
 
 ## Desarrollo local
 
@@ -56,7 +62,9 @@ npm test
 npm run build
 ```
 
-En Linux, se omiten explícitamente dos pruebas que requieren el servicio y el ayudante nativos de macOS; las otras 66 validan lógica, API, permisos, sesiones y proxy TLS. En macOS, compílalo antes de las pruebas con `npm run build:browser-helper --workspace @usovia/desktop`.
+En Linux, se omiten explícitamente dos pruebas que requieren el servicio y el ayudante nativos de macOS; las otras 78 validan lógica, API, permisos, sesiones y proxy TLS. En macOS, compílalo antes de las pruebas con `npm run build:browser-helper --workspace @usovia/desktop`.
+
+El worker se instala y opera por separado dentro del entorno privado de la empresa. Consulta [arquitectura, calidad, operación y esquema Parquet](docs/analytics.md) y [su configuración](analytics-worker/README.md). La funcionalidad nueva requiere publicación manual del Hub; el repositorio no cambia automáticamente el demo público.
 
 ## Cliente de escritorio
 
@@ -83,6 +91,7 @@ El repositorio está en [vtomasv/usovia](https://github.com/vtomasv/usovia). Los
 - `src/landing.tsx`: experiencia del colaborador.
 - `src/api.ts`: cliente HTTP tipado, manejo de errores y cancelación.
 - `src/types.ts` y `src/format.ts`: contratos de la consola y formatos compartidos.
+- `src/analytics.tsx`, `src/analytics-dialogs.tsx` y `src/components/account-directory.tsx`: inteligencia de uso, revisión/exportación y búsqueda empresarial.
 - `src/providers.tsx` y `src/conversations.tsx`: vistas por responsabilidad, cargadas solo al abrirlas.
 - `src/components/`: marca, acceso administrativo y tabla de aportes.
 

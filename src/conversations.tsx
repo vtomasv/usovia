@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { api } from './api';
+import { AccountPicker } from './components/account-directory';
 import { MessageSquare, RefreshCw, Search, ShieldCheck, Users, ChevronRight } from 'lucide-react';
 import type { Account } from './types';
 type Turn = {
@@ -74,7 +75,7 @@ const sources: Record<string, string> = {
 const count = (n: number, singular: string, plural: string) =>
   `${n} ${n === 1 ? singular : plural}`;
 const date = (value: string) => new Date(value).toLocaleString('es-CL');
-export function Conversations() {
+export function Conversations({ initialConversation }: { initialConversation?: string }) {
   const [detail, setDetail] = useState<Conversation | null>(null),
     [nextTurn, setNextTurn] = useState<number | null>(null),
     [snapshotAt, setSnapshotAt] = useState(''),
@@ -87,7 +88,7 @@ export function Conversations() {
     [tag, setTag] = useState(''),
     [query, setQuery] = useState(''),
     [groupBy, setGroupBy] = useState('account'),
-    [selected, setSelected] = useState<string | null>(null),
+    [selected, setSelected] = useState<string | null>(initialConversation || null),
     [revision, setRevision] = useState(0),
     [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -219,23 +220,14 @@ export function Conversations() {
         </button>
       </div>
       <section className="panel conversation-filters" aria-label="Filtros de conversaciones">
-        <label>
-          Usuario / cuenta
-          <select
-            value={account}
-            onChange={(e) => {
-              setAccount(e.target.value);
-              setSelected(null);
-            }}
-          >
-            <option value="">Todas las cuentas</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label} · {a.department} · {a.office}
-              </option>
-            ))}
-          </select>
-        </label>
+        <AccountPicker
+          value={account}
+          label={accounts.find((a) => a.id === account)?.label}
+          onChange={(a) => {
+            setAccount(a?.id || '');
+            setSelected(null);
+          }}
+        />
         <label>
           Departamento
           <select value={department} onChange={(e) => setDepartment(e.target.value)}>

@@ -32,5 +32,9 @@ jobs:
         run: npm test
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+      - name: Validate private worker syntax and production dependencies
+        run: |
+          node --check analytics-worker/worker.mjs
+          npm audit --prefix analytics-worker --omit=dev --audit-level=high
       - name: Build landing and console
         run: npm run build

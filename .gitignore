@@ -36,3 +36,10 @@ desktop/release-corporate-final/
 lab/
 __pycache__/
 *.pyc
+
+# Private analytical data and worker model caches
+*.sqlite*
+*.parquet
+analytics-worker/node_modules/
+analytics-worker/.cache/
+analytics-worker/models/

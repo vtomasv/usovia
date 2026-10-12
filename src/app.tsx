@@ -11,7 +11,6 @@ import {
   Check,
   ShieldCheck,
   Copy,
-  Search,
   X,
   LogOut,
   ChevronRight,
@@ -19,6 +18,7 @@ import {
   Globe,
   CheckCircle2,
   Info,
+  BarChart3,
 } from 'lucide-react';
 import { Landing } from './landing';
 import { api } from './api';
@@ -31,6 +31,12 @@ const Conversations = lazy(() =>
   import('./conversations').then((view) => ({ default: view.Conversations })),
 );
 const Providers = lazy(() => import('./providers').then((view) => ({ default: view.Providers })));
+const AnalyticsDashboard = lazy(() =>
+  import('./analytics').then((view) => ({ default: view.AnalyticsDashboard })),
+);
+const AccountsView = lazy(() =>
+  import('./components/account-directory').then((view) => ({ default: view.AccountsView })),
+);
 const viewFallback = (
   <div className="panel empty" role="status">
     Abriendo la vista…
@@ -45,7 +51,8 @@ const empty: Overview = {
   totals: { accounts: 0, events: 0, redactions: 0 },
 };
 const nav = [
-  { id: 'overview', label: 'Resumen', icon: LayoutDashboard },
+  { id: 'analytics', label: 'Inteligencia de uso', icon: BarChart3 },
+  { id: 'overview', label: 'Resumen operativo', icon: LayoutDashboard },
   { id: 'accounts', label: 'Cuentas', icon: Users },
   { id: 'events', label: 'Conversaciones', icon: Activity },
   { id: 'opportunities', label: 'Oportunidades', icon: Sparkles },
@@ -59,7 +66,7 @@ export function App() {
     [password, setPassword] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
-    [tab, setTab] = useState('overview'),
+    [tab, setTab] = useState('analytics'),
     [data, setData] = useState<Overview>(empty),
     [config, setConfig] = useState<Config>({
       organization: 'Gobierno corporativo de IA',
@@ -71,7 +78,7 @@ export function App() {
       null,
     ),
     [detail, setDetail] = useState<UsageEvent | null>(null),
-    [query, setQuery] = useState(''),
+    [initialConversation, setInitialConversation] = useState<string | undefined>(undefined),
     [copied, setCopied] = useState(false),
     [form, setForm] = useState({ department: '', country: 'Chile', office: '', tags: '' });
   useEffect(() => {
@@ -91,12 +98,12 @@ export function App() {
     }
   }
   useEffect(() => {
-    if (authenticated) {
+    if (authenticated && ['overview', 'accounts', 'opportunities'].includes(tab)) {
       refresh();
       const timer = setInterval(refresh, 10000);
       return () => clearInterval(timer);
     }
-  }, [authenticated]);
+  }, [authenticated, tab]);
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -188,7 +195,7 @@ export function App() {
               key={item.id}
               onClick={() => {
                 setTab(item.id);
-                setQuery('');
+                setInitialConversation(undefined);
               }}
             >
               <item.icon size={18} />
@@ -237,6 +244,17 @@ export function App() {
               </button>
             </div>
           )}
+          <div hidden={tab !== 'analytics'}>
+            <Suspense fallback={viewFallback}>
+              <AnalyticsDashboard
+                active={tab === 'analytics'}
+                onOpenConversation={(key) => {
+                  setInitialConversation(key);
+                  setTab('events');
+                }}
+              />
+            </Suspense>
+          </div>
           {tab === 'overview' && (
             <>
               <div className="page-heading">
@@ -395,136 +413,20 @@ export function App() {
             </>
           )}
           {tab === 'accounts' && (
-            <>
-              <div className="page-heading">
-                <div>
-                  <div className="eyebrow">ACTIVACIÓN Y PERMISOS</div>
-                  <h1>Cuentas participantes</h1>
-                  <p>
-                    Organiza por grupos genéricos. El participante conserva el control de sus
-                    permisos.
-                  </p>
-                </div>
-                <button
-                  className="primary"
-                  onClick={() => {
-                    setModal(true);
-                    setActivation(null);
-                  }}
-                >
-                  <Plus size={17} />
-                  Crear cuenta
-                </button>
-              </div>
-              <div className="search">
-                <Search size={17} />
-                <input
-                  placeholder="Buscar departamento, sucursal o etiqueta"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </div>
-              <section className="panel table-panel">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Cuenta</th>
-                      <th>Grupo</th>
-                      <th>Participación</th>
-                      <th>Último reporte</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.accounts
-                      .filter((a) => JSON.stringify(a).toLowerCase().includes(query.toLowerCase()))
-                      .map((a) => {
-                        const i = data.installations.find((i) => i.accountId === a.id);
-                        return (
-                          <tr key={a.id}>
-                            <td>
-                              <strong>{a.label}</strong>
-                              <div className="tags">
-                                {a.tags.map((t) => (
-                                  <span key={t}>{t}</span>
-                                ))}
-                              </div>
-                            </td>
-                            <td>
-                              {a.department}
-                              <small>
-                                {a.country} · {a.office}
-                              </small>
-                            </td>
-                            <td>
-                              {i ? (
-                                <>
-                                  <span
-                                    className={
-                                      'status ' + (i.consent.capture ? 'green' : 'neutral')
-                                    }
-                                  >
-                                    {i.consent.capture
-                                      ? 'Captura autorizada'
-                                      : i.consent.reportStatus
-                                        ? 'Solo estado'
-                                        : 'Sin participación'}
-                                  </span>
-                                  <small>
-                                    {i.consent.shareText
-                                      ? 'Texto redactado autorizado'
-                                      : 'Sin envío de texto'}
-                                  </small>
-                                </>
-                              ) : (
-                                <span className="status neutral">Por activar</span>
-                              )}
-                            </td>
-                            <td>
-                              {date(i?.lastSeen || null)}
-                              <small>
-                                {i?.lastSeen
-                                  ? i.reachable
-                                    ? 'Reporte reciente'
-                                    : 'Último estado conocido'
-                                  : 'Aún sin reporte'}
-                              </small>
-                            </td>
-                            <td>
-                              <button
-                                className={'status-button ' + (a.enabled ? 'enabled' : '')}
-                                onClick={async () => {
-                                  try {
-                                    await api('accounts/' + a.id, 'PATCH', { enabled: !a.enabled });
-                                    await refresh();
-                                  } catch (e) {
-                                    setError((e as Error).message);
-                                  }
-                                }}
-                              >
-                                {a.enabled ? 'Habilitada' : 'Suspendida'}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-                {!data.accounts.length && (
-                  <div className="empty compact">
-                    Crea la primera cuenta para generar su ID de activación.
-                  </div>
-                )}
-              </section>
-              <div className="bottom-note">
-                <ShieldCheck size={16} />
-                Habilitar una cuenta permite activarla; no enciende captura remotamente.
-              </div>
-            </>
+            <Suspense fallback={viewFallback}>
+              <AccountsView
+                revision={data?.accounts.length || 0}
+                onCreate={() => {
+                  setModal(true);
+                  setActivation(null);
+                }}
+                onChanged={refresh}
+              />
+            </Suspense>
           )}
           {tab === 'events' && (
             <Suspense fallback={viewFallback}>
-              <Conversations />
+              <Conversations initialConversation={initialConversation} />
             </Suspense>
           )}
           {tab === 'opportunities' && (

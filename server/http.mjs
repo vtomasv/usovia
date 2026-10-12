@@ -2,6 +2,7 @@ import {createHmac,timingSafeEqual} from 'node:crypto';
 import {HubService,ApiError} from './service.mjs';
 import {getStore} from './store.mjs';
 import {desktopRelease} from '../shared/release.mjs';
+import {ExportService} from './analytics/export.mjs';
 const COOKIE='usovia_admin';
 const eq=(a,b)=>{const x=Buffer.from(a||''),y=Buffer.from(b||'');return x.length===y.length&&timingSafeEqual(x,y);};
 function key(){if(!process.env.SESSION_SECRET||process.env.SESSION_SECRET.length<32)throw new ApiError(503,'Configura SESSION_SECRET con al menos 32 caracteres.');return process.env.SESSION_SECRET;}
@@ -59,6 +60,13 @@ export async function handle(req,res,providedService){
       if(!call)throw new ApiError(405,'Método no permitido.');return send(200,await call());
     }
     if(!admin(req))throw new ApiError(401,'Inicia sesión para abrir la consola.');
+    if(route==='analytics/session'&&method==='GET')return send(200,await service.analytics.session(Object.fromEntries(url.searchParams)));
+    if(route==='analytics'&&method==='GET')return send(200,await service.analytics.dashboard(Object.fromEntries(url.searchParams)));
+    if(route==='accounts'&&method==='GET')return send(200,await service.analytics.directory(Object.fromEntries(url.searchParams)));
+    if(route==='analytics/reviews'&&method==='POST')return send(200,await service.analytics.review(await readBody(req)));
+    if(route==='analytics/exports'&&method==='POST')return send(201,await new ExportService(service.analytics).create(await readBody(req)));
+    const exportPart=/^analytics\/exports\/([a-f0-9-]{36})\/(\d+)\.parquet$/.exec(route);
+    if(exportPart&&method==='GET'){const part=await new ExportService(service.analytics).part(exportPart[1],Number(exportPart[2]));res.statusCode=200;res.setHeader('Content-Type','application/vnd.apache.parquet');res.setHeader('Content-Disposition',`attachment; filename="${part.filename}"`);res.setHeader('Content-Length',part.bytes.length);res.setHeader('X-Usovia-Export-Rows',String(part.rows));res.setHeader('X-Usovia-Unavailable-Rows',String(part.unavailable));return res.end(part.bytes);}
     if(route==='providers'&&method==='GET')return send(200,await service.providers());
     if(route==='providers'&&method==='PUT')return send(200,await service.updateProviders(await readBody(req)));
     if(route==='conversations'&&method==='GET')return send(200,await service.conversations({...Object.fromEntries(['account','department','office','tag','query','groupBy','conversation','snapshotAt','afterTurn'].map(k=>[k,url.searchParams.get(k)||''])),view:'list'}));

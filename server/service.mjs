@@ -1,27 +1,32 @@
 import {randomBytes,randomUUID,createHash,timingSafeEqual} from 'node:crypto';
 import {analyze,aggregate,opportunities} from '../shared/analysis.mjs';
 import {defaultPolicy,validatePolicy,providerCatalog} from '../shared/providers.mjs';
+import {AnalyticsService} from './analytics/service.mjs';
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const secret=()=>randomBytes(32).toString('base64url');
 const now=()=>new Date().toISOString();
 export class ApiError extends Error{constructor(status,message){super(message);this.status=status;}}
 const fail=(status,message)=>{throw new ApiError(status,message);};
-const text=(value,max=100)=>typeof value==='string'?value.trim().slice(0,max):'';
+const text=(value,max=100)=>typeof value==='string'?value.replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,max):'';
 function equal(a,b){const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y);}
 export function publicAccount(a){const {activationHash,activationExpires,...rest}=a;return rest;}
 export class HubService{
-  constructor(store){this.store={transact:fn=>store.transact(s=>{const cutoff=Date.now()-7*86400000;s.events=s.events.filter(e=>Date.parse(e.receivedAt)>cutoff).slice(-500);s.audit=s.audit.slice(-1000);return fn(s);})};}
-  async providers(){return this.store.transact(s=>({policy:validatePolicy(s.providerPolicy||defaultPolicy()),catalog:providerCatalog}));}
-  async clientPolicy(token){return this.store.transact(s=>{this.authenticate(s,token);return {policy:validatePolicy(s.providerPolicy||defaultPolicy())};});}
+  constructor(store){
+    this.analytics=new AnalyticsService(store);
+    const prune=s=>{const cutoff=Date.now()-7*86400000;return {...s,events:s.events.filter(e=>Date.parse(e.receivedAt)>cutoff).slice(-500),audit:s.audit.slice(-1000)};};
+    this.store={transact:fn=>store.transact(s=>{const retained=prune(s);s.events=retained.events;s.audit=retained.audit;return fn(s);}),read:fn=>(store.read?store.read.bind(store):store.transact.bind(store))(s=>fn(prune(s)))};
+  }
+  async providers(){return this.store.read(s=>({policy:validatePolicy(s.providerPolicy||defaultPolicy()),catalog:providerCatalog}));}
+  async clientPolicy(token){return this.store.read(s=>{this.authenticate(s,token);return {policy:validatePolicy(s.providerPolicy||defaultPolicy())};});}
   async updateProviders(input){return this.store.transact(s=>{
     const current=validatePolicy(s.providerPolicy||defaultPolicy());
     if(input.revision!==current.revision)fail(409,'La política cambió. Actualiza antes de guardar.');
     let policy;try{policy=validatePolicy({schemaVersion:1,revision:current.revision+1,updatedAt:now(),endpoints:input.endpoints});}catch(e){fail(400,e.message);}
     s.providerPolicy=policy;s.audit.push({at:now(),action:'providers.updated',revision:policy.revision});return {policy,catalog:providerCatalog};
   });}
-  async overview(){return this.store.transact(s=>({accounts:s.accounts.map(publicAccount),installations:s.installations.map(({tokenHash,...i})=>({...i,reachable:!!i.lastSeen&&Date.now()-Date.parse(i.lastSeen)<90000})),events:s.events.slice(-25).reverse(),tasks:aggregate(s.events),opportunities:opportunities(s.events),totals:{accounts:s.accounts.length,events:s.events.length,redactions:s.events.reduce((n,e)=>n+e.redactions,0)}}));}
+  async overview(){return this.store.read(s=>({accounts:s.accounts.map(publicAccount),installations:s.installations.map(({tokenHash,...i})=>({...i,reachable:!!i.lastSeen&&Date.now()-Date.parse(i.lastSeen)<90000})),events:s.events.slice(-25).reverse(),tasks:aggregate(s.events),opportunities:opportunities(s.events),totals:{accounts:s.accounts.length,events:s.events.length,redactions:s.events.reduce((n,e)=>n+e.redactions,0)}}));}
   async createAccount(input){return this.store.transact(s=>{
-    if(s.accounts.length>=100)fail(409,'Se alcanzó el límite de 100 cuentas de este espacio.');
+    if(s.accounts.length>=1000)fail(409,'Se alcanzó el límite de 1000 cuentas de este espacio.');
     const code='USV-'+secret();
     const account={id:randomUUID(),label:'Cuenta '+String(s.accounts.length+1).padStart(3,'0'),department:text(input.department)||'Sin asignar',country:text(input.country)||'Sin asignar',office:text(input.office)||'Sin asignar',tags:Array.isArray(input.tags)?input.tags.map(t=>text(t,35)).filter(Boolean).slice(0,8):[],enabled:true,createdAt:now(),activationHash:hash(code),activationExpires:new Date(Date.now()+86400000).toISOString()};
     s.accounts.push(account);s.audit.push({at:now(),action:'account.created',accountId:account.id});
@@ -90,7 +95,7 @@ export class HubService{
     const cutoff=Date.now()-7*86400000;s.events=s.events.filter(e=>Date.parse(e.receivedAt)>cutoff).slice(-500);
     return {accepted,recommendations:s.events.filter(e=>accepted.includes(e.id)).map(e=>({eventId:e.id,task:e.label,tips:e.tips,method:e.method}))};
   });}
-  async conversations(filters={}){return this.store.transact(s=>{
+  async conversations(filters={}){return this.store.read(s=>{
     const accounts=s.accounts.map(publicAccount),accountMap=new Map(accounts.map(a=>[a.id,a]));
     const filtered=s.events.filter(e=>{const a=accountMap.get(e.accountId);return a&&(!filters.account||a.id===filters.account)&&(!filters.department||a.department===filters.department)&&(!filters.office||a.office===filters.office)&&(!filters.tag||a.tags.includes(filters.tag));});
     const map=new Map();
@@ -111,9 +116,9 @@ export class HubService{
     }
     return {accounts,conversations:filters.view==='list'?conversations.map(summary):conversations,groups:grouped,groupBy,retention:{days:7,maxTurns:500},totalTurns:conversations.reduce((n,c)=>n+c.turns.length,0)};
   });}
-  async recommendations(token){return this.store.transact(s=>{
+  async recommendations(token){return this.store.read(s=>{
     const i=this.authenticate(s,token);const events=s.events.filter(e=>e.installationId===i.id);
     return {events:events.slice(-15).reverse(),tasks:aggregate(events),opportunities:opportunities(events),account:publicAccount(s.accounts.find(a=>a.id===i.accountId))};
   });}
-  async erase(token){return this.store.transact(s=>{const i=this.authenticate(s,token,{allowSuspended:true});s.events=s.events.filter(e=>e.installationId!==i.id);i.consent={capture:false,shareText:false,captureResponses:false,reportStatus:false};i.consentVersion++;i.state='datos_eliminados';return {erased:true,consentVersion:i.consentVersion};});}
+  async erase(token){const result=await this.store.transact(s=>{const i=this.authenticate(s,token,{allowSuspended:true});s.events=s.events.filter(e=>e.installationId!==i.id);i.consent={capture:false,shareText:false,captureResponses:false,reportStatus:false};i.consentVersion++;i.state='datos_eliminados';return {erased:true,consentVersion:i.consentVersion,installationId:i.id};});await this.analytics.repository.eraseInstallation(result.installationId,result.consentVersion);const {installationId,...publicResult}=result;return publicResult;}
 }
