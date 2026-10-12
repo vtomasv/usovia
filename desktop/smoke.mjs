@@ -13,7 +13,7 @@ export async function smoke({app, window, tray, safeStorage, snapshot, save, loa
   assert.equal(state.account, null);
   assert.equal(state.consent.capture, false);
   assert.equal(state.proxyActive, false);
-  assert.equal(state.systemBrowser.supported, false);
+  assert.equal(state.systemBrowser.supported, true);
   await save({...await load(), model: 'synthetic-save-roundtrip'});
   assert.equal((await load()).model, 'synthetic-save-roundtrip');
   assert.equal(tray.isDestroyed(), false);
@@ -33,5 +33,5 @@ export async function smoke({app, window, tray, safeStorage, snapshot, save, loa
   assert.equal(manifest.acceleration, 'cpu');
   const launcher = cliLauncher({platform: process.platform, proxyUrl: 'http://127.0.0.1:11440', caPath: 'C:\\example\\root.pem', executable: process.execPath, entry: 'C:\\example\\cli-entry.mjs'});
   assert.equal(launcher.name.endsWith('.cmd'), true);
-  await writeFile(output, JSON.stringify({ok: true, platform: process.platform, arch: process.arch, packaged: true, tray: true, encryptedStateRoundtrip: true, closeKeepsTray: true, rendererBridge: true, defaultCapture: false, systemBrowserSupported: false, ollamaVersion: manifest.version, realLocalInference: true, responseCharacters: chat.response.length}, null, 2));
+  await writeFile(output, JSON.stringify({ok: true, platform: process.platform, arch: process.arch, packaged: true, tray: true, encryptedStateRoundtrip: true, closeKeepsTray: true, rendererBridge: true, defaultCapture: false, systemBrowserSupported: true, ollamaVersion: manifest.version, realLocalInference: true, responseCharacters: chat.response.length}, null, 2));
 }

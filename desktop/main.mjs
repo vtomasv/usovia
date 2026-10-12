@@ -9,6 +9,7 @@ import {LocalGateway} from './gateway.mjs';
 import {loadAuthority,verifyEndpointCertificate} from './certificate.mjs';
 import {LlmProxy} from './tls-proxy.mjs';
 import {SystemRouting} from './system-routing.mjs';
+import {WindowsRouting} from './windows-routing.mjs';
 import {providerCatalog} from '../shared/providers.mjs';
 import {analyze} from '../shared/analysis.mjs';
 import {cliLauncher} from './cli-launcher.mjs';
@@ -46,7 +47,7 @@ async function stopRuntime(){
   if(process.platform==='win32')await new Promise(resolve=>execFile('taskkill.exe',['/PID',String(owned.pid),'/T','/F'],{windowsHide:true,timeout:10000},()=>resolve()));
   else owned.kill();
 }
-async function snapshot(){return {...controller.publicState(),runtime:await runtimeStatus(),gatewayActive:!!gateway.server,gatewayUrl:'http://127.0.0.1:11436',gatewayKey:gateway.key,startAtLogin:app.getLoginItemSettings().openAtLogin,localConversation,captureCoverage:['Chat de Usovia','API local configurada','Navegador IA de Usovia','CLI configurada con proxy',...((await systemRouting?.status())?.active?['Navegadores con proxy y CA del sistema']:[])],proxyActive:!!proxy?.server,proxyUrl:proxy?.url||null,caPath:authority?.publicPath||null,caFingerprint:authority?.fingerprint||null,proxyStats:proxy?.stats||null,systemBrowser:systemRouting?await systemRouting.status():{supported:process.platform==='darwin',active:false,phase:'off'},browserProxyStats:browserProxy?.stats||null,providerCatalog,version:app.getVersion(),hubDefault:process.env.USOVIA_HUB_URL||'https://usovia-hub-demo.vercel.app'};}
+async function snapshot(){return {...controller.publicState(),runtime:await runtimeStatus(),gatewayActive:!!gateway.server,gatewayUrl:'http://127.0.0.1:11436',gatewayKey:gateway.key,startAtLogin:app.getLoginItemSettings().openAtLogin,localConversation,captureCoverage:['Chat de Usovia','API local configurada','Navegador IA de Usovia','CLI configurada con proxy',...((await systemRouting?.status())?.active?['Navegadores con proxy y CA del sistema']:[])],proxyActive:!!proxy?.server,proxyUrl:proxy?.url||null,caPath:authority?.publicPath||null,caFingerprint:authority?.fingerprint||null,proxyStats:proxy?.stats||null,systemBrowser:systemRouting?await systemRouting.status():{supported:['darwin','win32'].includes(process.platform),platform:process.platform,active:false,phase:'off'},browserProxyStats:browserProxy?.stats||null,providerCatalog,version:app.getVersion(),hubDefault:process.env.USOVIA_HUB_URL||'https://usovia-hub-demo.vercel.app'};}
 async function push(){updateTray();const target=window;if(!target||target.isDestroyed())return;const value=await snapshot();if(!target.isDestroyed()&&!target.webContents.isDestroyed())target.webContents.send('usovia:state',value);}
 async function routeBrowsers(active){
   if(!providerSession)return;
@@ -71,23 +72,28 @@ async function configureSystemBrowsers(policy){
   if(quitting||generation!==controller.generation||!controller.state.consent.capture){await pauseSystemBrowsers();return;}
   await systemRouting.setActive(true);
 }
+function createSystemRouting(policy=controller.state.providerPolicy){
+  const windows=process.platform==='win32';
+  return new (windows?WindowsRouting:SystemRouting)({directory:join(app.getPath('userData'),'browser-routing'),helper:app.isPackaged?join(process.resourcesPath,windows?'browser-helper/usovia-windows-browser-helper.exe':'browser-helper/usovia-browser-helper'):join(here,windows?'native/bin/usovia-windows-browser-helper.exe':'native/bin/usovia-browser-helper'),policy});
+}
 async function enableSystemBrowsers(){
-  if(process.platform!=='darwin')throw new Error('La integración del sistema está disponible en macOS.');
+  if(!['darwin','win32'].includes(process.platform))throw new Error('La integración del sistema está disponible en Mac y Windows.');
   if(!controller.state.consent.capture)throw new Error('Autoriza los canales compatibles antes de activar los navegadores.');
   await configureProxy({refresh:true});if(!proxy?.server)throw new Error('El proxy necesita una política vigente.');
   const generation=controller.generation;
-  if(!systemRouting)systemRouting=new SystemRouting({directory:join(app.getPath('userData'),'browser-routing'),helper:app.isPackaged?join(process.resourcesPath,'browser-helper/usovia-browser-helper'):join(here,'native/bin/usovia-browser-helper'),policy:controller.state.providerPolicy});
+  if(!systemRouting)systemRouting=createSystemRouting();
   let status=await systemRouting.status();if(status.active)return snapshot();
   if(['restoring','removing_root'].includes(status.phase))throw new Error('macOS está retirando la autorización anterior. Completa ese paso antes de volver a activar los navegadores.');
   if(status.requested&&['awaiting_authorization','installing_root'].includes(status.phase))throw new Error('Ya hay una autorización de navegadores en curso. Complétala o pausa la observación para cancelarla.');
   if(['active','paused'].includes(status.phase)){systemRouting.requested=true;await configureSystemBrowsers(controller.state.providerPolicy);return snapshot();}
   if(status.requested||status.phase==='stopped'||status.phase==='error'||status.phase==='recovered'||status.phase==='helper_unavailable'){
-    await systemRouting.stop();systemRouting=new SystemRouting({directory:join(app.getPath('userData'),'browser-routing'),helper:app.isPackaged?join(process.resourcesPath,'browser-helper/usovia-browser-helper'):join(here,'native/bin/usovia-browser-helper'),policy:controller.state.providerPolicy});
+    await systemRouting.stop();systemRouting=createSystemRouting();
   }
-  const confirmation=await dialog.showMessageBox(window,{type:'info',title:'Autorizar gobierno corporativo de IA',message:'Permitir la conexión de tus navegadores con Usovia',detail:'Con tu autorización, Usovia configura un proxy selectivo y un certificado TLS propio del equipo. Solo observa rutas de IA habilitadas por la empresa; las solicitudes y respuestas se envían únicamente con tus permisos. No bloquea contenido. Pausar restaura la red. macOS solicitará permiso de administrador y puede pedir otro para retirar el certificado. Gracias por colaborar con las políticas de seguridad y mejora del uso de IA.',buttons:['Cancelar','Continuar y autorizar'],defaultId:0,cancelId:0});
+  const osDetail=process.platform==='win32'?'Windows configura el proxy y confía en la CA únicamente para tu cuenta de usuario. Se conserva la configuración de otras aplicaciones y se rechaza la integración si hay otro proxy o una política administrada. Pausar retira la CA añadida y restaura tus ajustes. Los navegadores con configuración propia requieren revisión de TI.':'macOS solicitará permiso de administrador y puede pedir otro para retirar el certificado.';
+  const confirmation=await dialog.showMessageBox(window,{type:'info',title:'Autorizar gobierno corporativo de IA',message:'Permitir la conexión de tus navegadores con Usovia',detail:'Con tu autorización, Usovia configura un proxy selectivo y un certificado TLS propio del equipo. Solo observa rutas de IA habilitadas por la empresa; las solicitudes y respuestas se envían únicamente con tus permisos. No bloquea contenido. La confianza de la CA abarca TLS; Usovia limita la observación a los dominios LLM seleccionados. '+osDetail+' Gracias por colaborar con las políticas de seguridad y mejora del uso de IA.',buttons:['Cancelar','Continuar y autorizar'],defaultId:0,cancelId:0});
   if(confirmation.response!==1)return snapshot();
   const plan=await systemRouting.inspect();
-  if(!plan.services.some(s=>s.supported&&!s.conflict))throw new Error('No hay servicios sin otro proxy activo. La integración requiere revisar la red con TI.');
+  if(!plan.services.some(s=>s.supported&&!s.conflict))throw new Error(plan.services.find(s=>s.reason)?.reason||'No hay servicios sin otro proxy activo. La integración requiere revisar la red con TI.');
   const activation=await systemRouting.prepare(authority);
   if(quitting||generation!==controller.generation||!controller.state.consent.capture){await pauseSystemBrowsers();return snapshot();}
   await configureSystemBrowsers(controller.state.providerPolicy);
@@ -163,8 +169,8 @@ const actions={
   cliLauncher:()=>createCliLauncher(),
   enableSystemBrowsers:()=>{if(!browserAuthorizationWork)browserAuthorizationWork=enableSystemBrowsers().finally(()=>{browserAuthorizationWork=null;});return browserAuthorizationWork;},
   recoverSystemBrowsers:async()=>{
-    const routing=new SystemRouting({directory:join(app.getPath('userData'),'browser-routing'),helper:app.isPackaged?join(process.resourcesPath,'browser-helper/usovia-browser-helper'):join(here,'native/bin/usovia-browser-helper'),policy:controller.state.providerPolicy||{schemaVersion:1,revision:1,updatedAt:null,endpoints:[]}});
-    const answer=await dialog.showMessageBox(window,{type:'info',title:'Restaurar la red',message:'Retirar certificados y ajustes pendientes de Usovia',detail:'macOS solicitará autorización local. Se conservan los ajustes de otras aplicaciones y las sesiones activas. Gracias por colaborar con la seguridad de tu equipo.',buttons:['Cancelar','Autorizar restauración'],cancelId:0,defaultId:0});
+    const routing=createSystemRouting(controller.state.providerPolicy||{schemaVersion:1,revision:1,updatedAt:null,endpoints:[]});
+    const answer=await dialog.showMessageBox(window,{type:'info',title:'Restaurar la red',message:'Retirar certificados y ajustes pendientes de Usovia',detail:'Se recuperan únicamente los ajustes y certificados añadidos por Usovia en sesiones anteriores. Se conservan los cambios de otras aplicaciones y las sesiones activas. En macOS se solicitará autorización local. Gracias por colaborar con la seguridad de tu equipo.',buttons:['Cancelar','Autorizar restauración'],cancelId:0,defaultId:0});
     if(answer.response!==1)return {cancelled:true};return routing.authorizeRecovery();
   },
   disableSystemBrowsers:async()=>{if(systemRouting)systemRouting.requested=false;await pauseSystemBrowsers();await push();return snapshot();},
@@ -185,6 +191,7 @@ function updateTray(){
   ]));
 }
 app.whenReady().then(async()=>{
+  if(process.platform==='win32'){try{await createSystemRouting({schemaVersion:1,revision:1,updatedAt:null,endpoints:[]}).authorizeRecovery();}catch{/* Existing state remains off until the participant reviews any recovery issue. */}}
   let state;try{state=await load();}catch(e){state=initialClient();state.error=e.message;}
   controller=new ClientController({state,save,version:app.getVersion(),request:(url,options)=>fetch(url,{...options,signal:options.signal||AbortSignal.timeout(15000)})});
   gateway=new LocalGateway({controller,runtimeUrl,onChange:()=>{controller.flush().then(push);}});

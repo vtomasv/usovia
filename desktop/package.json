@@ -1,6 +1,6 @@
 {
   "name": "@usovia/desktop",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "description": "Gobierno corporativo de IA con participaci\u00f3n autorizada",
   "author": "Usovia",
@@ -11,7 +11,8 @@
     "package": "npm run build:browser-helper && electron-builder --mac zip dmg --arm64",
     "build:browser-helper": "node ../scripts/build-browser-helper.mjs",
     "package:win": "electron-builder --win nsis --x64 --publish never",
-    "bundle:win": "pwsh -File ../scripts/bundle-runtime-windows.ps1"
+    "bundle:win": "pwsh -File ../scripts/bundle-runtime-windows.ps1",
+    "build:windows-browser-helper": "pwsh -File ../scripts/build-windows-browser-helper.ps1"
   },
   "devDependencies": {
     "electron": "44.7.0",
@@ -83,6 +84,13 @@
           "to": "ollama",
           "filter": [
             "**/*"
+          ]
+        },
+        {
+          "from": "native/bin",
+          "to": "browser-helper",
+          "filter": [
+            "usovia-windows-browser-helper.exe"
           ]
         }
       ],

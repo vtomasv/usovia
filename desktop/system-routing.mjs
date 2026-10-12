@@ -20,13 +20,14 @@ export class SystemRouting{
   }
   get pacUrl(){return `http://127.0.0.1:${this.port}/${this.id}/proxy.pac?revision=${this.policy.revision}`;}
   get statusPath(){return `/Library/Application Support/Usovia/BrowserSessions/${this.id}/status.json`;}
+  get supportedPlatform(){return this.platform==='darwin';}
   async status(){let helper=null;try{helper=JSON.parse(await readFile(this.statusPath,'utf8'));}catch{}
     // Expired status cannot falsely claim coverage after a killed native helper.
     const fresh=helper&&Date.now()-helper.at<8000;if(fresh)this.authorized=true;
-    return {supported:this.platform==='darwin',requested:this.requested,desired:this.desired,active:!!(this.desired&&fresh&&helper.phase==='active'&&helper.active&&helper.effective),phase:fresh?helper.phase:this.requested&&(this.authorized||this.requestedAt&&Date.now()-this.requestedAt>180000)?'helper_unavailable':this.requested?'awaiting_authorization':'off',services:fresh?helper.services||[]:[],skippedServices:fresh?helper.skippedServices||[]:[],configured:!!(fresh&&helper.active),error:this.error||(fresh?helper.error:null),pacUrl:this.server?this.pacUrl:null};
+    return {supported:this.supportedPlatform,platform:this.platform,requested:this.requested,desired:this.desired,active:!!(this.desired&&fresh&&helper.phase==='active'&&helper.active&&helper.effective),phase:fresh?helper.phase:this.requested&&(this.authorized||this.requestedAt&&Date.now()-this.requestedAt>180000)?'helper_unavailable':this.requested?'awaiting_authorization':'off',services:fresh?helper.services||[]:[],skippedServices:fresh?helper.skippedServices||[]:[],configured:!!(fresh&&helper.active),error:this.error||(fresh?helper.error:null),pacUrl:this.server?this.pacUrl:null};
   }
   async start(){
-    if(this.platform!=='darwin')throw new Error('La integración de navegadores del sistema está disponible en macOS.');
+    if(!this.supportedPlatform)throw new Error('La integración de navegadores no está disponible en este sistema.');
     if(this.server)return;
     await mkdir(this.directory,{recursive:true,mode:0o700});await chmod(this.directory,0o700);
     const server=http.createServer((req,res)=>{
