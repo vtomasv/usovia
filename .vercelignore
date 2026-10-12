@@ -6,7 +6,6 @@ desktop/ui/app-icon.iconset
 .runtime
 .vercel-cli
 .env*
-tests
 lab
 .agents
 skills-lock.json
