@@ -4,7 +4,7 @@
 
 Usovia conecta el aprendizaje cotidiano de los colaboradores con recomendaciones y oportunidades para su organización. Incluye un cliente de escritorio con IA local y un Hub corporativo. La participación es voluntaria y los permisos se autorizan por separado.
 
-[Visitar Usovia](https://usovia-hub-demo.vercel.app) · [Presentar la central 1.2](docs/product-demo.md) · [Cliente macOS](docs/version-1.1.md) · [Cliente Windows e instaladores](docs/windows.md) · [CI y publicación manual](docs/deployment.md)
+[Visitar Usovia](https://usovia-hub-demo.vercel.app) · [Presentar la central 1.2](docs/product-demo.md) · [Cliente macOS firmado](docs/version-1.3-macos.md) · [Cliente Windows e instaladores](docs/windows.md) · [CI y publicación manual](docs/deployment.md)
 
 ## Qué incluye
 
@@ -26,7 +26,7 @@ La captura cubre chat/API local, Gemini en el navegador integrado y API/CLI conf
 
 El modo actual observa sin bloqueo de contenido. Se redactan patrones conocidos; esto no garantiza anonimización. Las cuentas no piden nombre/correo, pero el contexto puede permitir identificar a una persona. Las oportunidades son hipótesis para revisión humana y no miden productividad. Un reporte reciente no demuestra el estado de encendido del computador.
 
-El instalador 1.1 no tiene firma Developer ID ni notarización. La nueva autorización gráfica de la integración de navegadores requiere revalidación completa; el ayudante utiliza una API macOS heredada que debe sustituirse antes de distribución gestionada. Revisa [los límites técnicos](docs/version-1.1.md) y [seguridad](SECURITY.md).
+El instalador macOS 1.3 está firmado con Developer ID y notarizado por Apple. Se verificaron el DMG, Gatekeeper y una inferencia local real con el cliente extraído de ese paquete. La integración gráfica de navegadores conserva su matriz de validación pendiente; el ayudante utiliza una API macOS heredada que debe sustituirse antes de distribución gestionada. Revisa [la distribución firmada](docs/version-1.3-macos.md), [los límites técnicos](docs/version-1.1.md) y [seguridad](SECURITY.md).
 
 ## Arquitectura
 

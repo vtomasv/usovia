@@ -9,6 +9,6 @@ El proyecto es una implementación funcional en evolución. No constituye todav�
 - La redacción automática reconoce patrones limitados y no garantiza anonimización.
 - El administrador debe limitar el acceso a la consola y utilizar secretos robustos. La consola actual no incluye SSO ni RBAC granular.
 - La auditoría de CI cubre dependencias de producción. Las dependencias de desarrollo tienen vulnerabilidades conocidas que requieren evaluación y actualización; una auditoría de producción correcta no equivale a una auditoría de toda la cadena de suministro.
-- Firma, notarización, servicio macOS moderno y revisión independiente son pendientes antes de una distribución corporativa gestionada.
+- macOS 1.3 tiene firma Developer ID, notarización y verificación de Gatekeeper. Windows conserva pendiente Authenticode. El servicio macOS moderno, la validación completa de navegadores de Mac y la revisión independiente siguen pendientes antes de una distribución corporativa gestionada.
 
 El worker semántico ejecuta inferencia local y lee solo contexto redactado ya autorizado. Los vectores, notas de revisión y exportaciones son derivados sensibles y siguen la retención documentada en [análisis](docs/analytics.md). No son anónimos. El borrado invalida trabajos y manifiestos mediante barreras de consentimiento; no elimina archivos descargados ni backups ajenos. La ingesta JSONB, SSO/RBAC, aislamiento mediante RLS y garantías de purga requieren trabajo adicional antes de una operación empresarial a gran escala.

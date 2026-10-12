@@ -42,7 +42,7 @@ Las variables heredadas del proyecto incluyen acceso a producción en otros ento
 
 ## Distribución de escritorio
 
-Se distribuyen macOS Apple Silicon sin firma Developer ID/notarización y Windows x64 sin Authenticode. Windows se compila y publica mediante el workflow nativo bajo demanda, con prueba de captura en Chrome/Edge/Firefox y limpieza de sus CA; no hay distribución Linux ni publicación automática de una CA. La nueva autorización gráfica de navegadores requiere todavía una validación completa en un Mac desbloqueado. Antes de distribución gestionada, firma/notariza y sustituye el ayudante heredado por un servicio macOS moderno.
+macOS Apple Silicon 1.3 se distribuye firmado con Developer ID y notarizado por Apple; Windows x64 continúa sin Authenticode. El flujo de Mac usa el certificado y el perfil de notarización del llavero del titular, sin exportar claves a CI. Consulta [firma y notarización](macos-signing.md) y [la edición Mac 1.3](version-1.3-macos.md). Windows se compila y publica mediante el workflow nativo bajo demanda, con prueba de captura en Chrome/Edge/Firefox y limpieza de sus CA; no hay distribución Linux ni publicación automática de una CA. La integración gráfica de navegadores de Mac requiere todavía su validación completa. Antes de distribución gestionada, sustituye el ayudante heredado por un servicio macOS moderno y completa las pruebas de cobertura.
 
 ## Procesamiento semántico
 

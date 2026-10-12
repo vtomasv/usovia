@@ -119,7 +119,7 @@ export function DesktopDownload({
           </h3>
           <p>
             {selected.os === 'macos'
-              ? 'Para Mac con chip M1 o posterior. Arrastra Usovia a Aplicaciones.'
+              ? 'Para macOS 13 o posterior con chip M1 o posterior. Arrastra Usovia a Aplicaciones.'
               : 'Para Windows 10 22H2 / Windows 11 de 64 bits. El asistente instala Usovia en tu cuenta.'}{' '}
             Motor local incluido; descarga tu primer modelo desde la aplicación.
           </p>

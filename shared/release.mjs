@@ -4,13 +4,15 @@ export const desktopReleases=[
     "id": "macos-arm64",
     "os": "macos",
     "arch": "arm64",
-    "url": "https://x9yieeaxtrt3jpcz.public.blob.vercel-storage.com/releases/1.1.0/f25f6904b77a/Usovia-1.1.0-arm64.dmg",
-    "sha256": "f25f6904b77a3c94db834f2a04e1ff32e6fd77332bfcd6037650968a1de80c69",
-    "version": "1.1.0",
-    "platform": "macOS Apple Silicon",
-    "signed": false,
+    "url": "https://github.com/vtomasv/usovia/releases/download/desktop-v1.3.0-macos-arm64/Usovia-1.3.0-arm64.dmg",
+    "sha256": "c571d3406fcbf1fa8c7f443955375918616efc3d471e08b06200a5df105d563e",
+    "version": "1.3.0",
+    "platform": "macOS 13+ · Apple Silicon",
+    "signed": true,
+    "notarized": true,
     "systemBrowser": true,
-    "bytes": 305177337
+    "bytes": 304417211,
+    "runtime": "Ollama 0.40.0"
   },
   {
     "os": "windows",

@@ -11,5 +11,5 @@ export function recommendedRelease(device,releases) {
   return releases.find(r=>r.os===device.os&&(r.arch===device.arch||device.arch==='unknown'))?.id||null;
 }
 export function configuredReleases(releases,macOverride) {
-  return releases.map(release=>release.os==='macos'&&macOverride?{...release,url:macOverride,sha256:macOverride===release.url?release.sha256:null}:release);
+  return releases.map(release=>release.os==='macos'&&macOverride&&macOverride!==release.url?{...release,url:macOverride,sha256:null,signed:false,notarized:false,bytes:undefined,version:'personalizado'}:release);
 }

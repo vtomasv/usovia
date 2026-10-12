@@ -21,10 +21,12 @@ test('OS recommendation separates Windows x64, Mac architecture, mobile and unsu
     const device=detectPlatform(input);assert.deepEqual(device,{os,arch});assert.equal(recommendedRelease(device,releases),recommended);
   }
 });
-test('legacy Mac download override never changes a Windows artifact or publishes a wrong digest',()=>{
-  const source=[{id:'mac',os:'macos',url:'https://example.invalid/mac.dmg',sha256:'mac-hash'}, {id:'win',os:'windows',url:'https://example.invalid/win.exe',sha256:'win-hash'}];
+test('legacy Mac download override never changes a Windows artifact or claims the wrong signature, version or digest',()=>{
+  const source=[{id:'mac',os:'macos',url:'https://example.invalid/mac.dmg',sha256:'mac-hash',signed:true,notarized:true,bytes:100,version:'1.3.0'}, {id:'win',os:'windows',url:'https://example.invalid/win.exe',sha256:'win-hash'}];
   const configured=configuredReleases(source,'https://example.invalid/custom.dmg');
   assert.equal(configured[0].url,'https://example.invalid/custom.dmg');assert.equal(configured[0].sha256,null);
+  assert.equal(configured[0].signed,false);assert.equal(configured[0].notarized,false);assert.equal(configured[0].bytes,undefined);assert.equal(configured[0].version,'personalizado');
+  assert.deepEqual(configuredReleases(source,source[0].url),source);
   assert.deepEqual(configured[1],source[1]);assert.equal(source[0].sha256,'mac-hash');
 });
 test('public installer configuration retains Mac compatibility and exposes only public release metadata',async()=>{
