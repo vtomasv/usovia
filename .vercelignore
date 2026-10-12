@@ -1,6 +1,7 @@
 node_modules
 desktop/node_modules
 desktop/runtime
+desktop/runtime-windows
 desktop/release
 desktop/ui/app-icon.iconset
 .runtime
