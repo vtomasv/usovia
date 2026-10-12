@@ -1,6 +1,6 @@
 {
   "name": "@usovia/desktop",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Gobierno corporativo de IA con participaci\u00f3n autorizada",
   "author": "Usovia",
@@ -9,7 +9,9 @@
   "scripts": {
     "start": "electron .",
     "package": "npm run build:browser-helper && electron-builder --mac zip dmg --arm64",
-    "build:browser-helper": "node ../scripts/build-browser-helper.mjs"
+    "build:browser-helper": "node ../scripts/build-browser-helper.mjs",
+    "package:win": "electron-builder --win nsis --x64 --publish never",
+    "bundle:win": "pwsh -File ../scripts/bundle-runtime-windows.ps1"
   },
   "devDependencies": {
     "electron": "44.7.0",
@@ -30,26 +32,12 @@
     ],
     "extraResources": [
       {
-        "from": "runtime",
-        "to": "ollama",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
         "from": "../shared",
         "to": "shared",
         "filter": [
           "analysis.mjs",
           "providers.mjs",
           "cli-entry.mjs"
-        ]
-      },
-      {
-        "from": "native/bin",
-        "to": "browser-helper",
-        "filter": [
-          "usovia-browser-helper"
         ]
       }
     ],
@@ -60,9 +48,62 @@
       "target": [
         "zip",
         "dmg"
+      ],
+      "extraResources": [
+        {
+          "from": "runtime",
+          "to": "ollama",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "native/bin",
+          "to": "browser-helper",
+          "filter": [
+            "usovia-browser-helper"
+          ]
+        }
       ]
     },
-    "artifactName": "Usovia-${version}-${arch}.${ext}"
+    "artifactName": "Usovia-${version}-${arch}.${ext}",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "ui/app-icon.png",
+      "extraResources": [
+        {
+          "from": "runtime-windows",
+          "to": "ollama",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ],
+      "artifactName": "Usovia-${version}-windows-${arch}-setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Usovia",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "es_ES",
+        "en_US"
+      ],
+      "language": "3082"
+    }
   },
   "dependencies": {
     "@peculiar/x509": "^2.1.0",

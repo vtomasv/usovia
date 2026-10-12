@@ -1,0 +1,74 @@
+name: Windows installer
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 35
+    env:
+      ONNXRUNTIME_NODE_INSTALL: skip
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Test consent, sessions, TLS proxy and Windows CLI launcher
+        run: npm test
+      - name: Prepare verified official CPU runtime
+        shell: pwsh
+        run: ./scripts/bundle-runtime-windows.ps1
+      - name: Build per-user NSIS installer
+        run: npm run package:win --workspace @usovia/desktop
+      - name: Install and run the packaged application with a real local model
+        shell: pwsh
+        run: ./scripts/smoke-windows.ps1
+      - name: Record installer integrity
+        shell: pwsh
+        run: |
+          $version = (Get-Content desktop/package.json | ConvertFrom-Json).version
+          $installer = Get-Item "desktop/release/Usovia-$version-windows-x64-setup.exe"
+          $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($installer.Name)" | Set-Content desktop/release/SHA256SUMS.txt -Encoding utf8
+          @{ id = 'windows-x64'; os = 'windows'; arch = 'x64'; platform = 'Windows 10/11 · 64 bits (Intel/AMD)'; version = $version; url = "https://github.com/vtomasv/usovia/releases/download/desktop-v$version-windows-x64/$($installer.Name)"; sha256 = $hash; bytes = $installer.Length; signed = $false; runtime = 'Ollama 0.40.3 · CPU'; systemBrowser = $false } | ConvertTo-Json | Set-Content desktop/release/windows-release.json -Encoding utf8
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-installer
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            desktop/release/*-setup.exe
+            desktop/release/SHA256SUMS.txt
+            desktop/release/windows-release.json
+            desktop/release/windows-verification.json
+            desktop/runtime-windows/runtime-manifest.json
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-installer
+          path: artifact
+      - name: Publish verified Windows installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          cd artifact/release
+          VERSION=$(jq -r .version windows-release.json)
+          TAG="desktop-v$VERSION-windows-x64"
+          printf '%s\n' 'Instalador Windows x64 por usuario, con motor local CPU incluido, bandeja del sistema y participación desactivada inicialmente.' 'Verificación nativa: instalación NSIS, ejecución de la aplicación empaquetada, estado cifrado DPAPI, bandeja, cerrar ventana sin salir, inferencia local real y desinstalación.' 'Sin firma Authenticode. No configura el proxy ni los certificados de los otros navegadores de Windows. Gemini en Usovia y API/CLI configuradas utilizan el proxy local autorizado.' > notes.txt
+          gh release create "$TAG" --repo "$REPO" --target "$SOURCE_COMMIT" --title "Usovia $VERSION · Windows x64" --notes-file notes.txt ./*-setup.exe SHA256SUMS.txt windows-release.json windows-verification.json ../runtime-windows/runtime-manifest.json

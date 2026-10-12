@@ -3,7 +3,7 @@ import {readFile,writeFile,mkdir,rename} from 'node:fs/promises';
 import {dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {X509Certificate,randomBytes,randomUUID} from 'node:crypto';
-import {spawn} from 'node:child_process';
+import {spawn,execFile} from 'node:child_process';
 import {ClientController,initialClient,normalizeHub} from './controller.mjs';
 import {LocalGateway} from './gateway.mjs';
 import {loadAuthority,verifyEndpointCertificate} from './certificate.mjs';
@@ -11,10 +11,12 @@ import {LlmProxy} from './tls-proxy.mjs';
 import {SystemRouting} from './system-routing.mjs';
 import {providerCatalog} from '../shared/providers.mjs';
 import {analyze} from '../shared/analysis.mjs';
+import {cliLauncher} from './cli-launcher.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
 if(process.env.USOVIA_DATA_DIR)app.setPath('userData',process.env.USOVIA_DATA_DIR);
 else if(!app.isPackaged)app.setPath('userData',join(here,'../.runtime/desktop'));
 app.setName('Usovia');app.enableSandbox();
+if(process.platform==='win32')app.setAppUserModelId('app.usovia.desktop');
 app.commandLine.appendSwitch('force-renderer-accessibility');
 const runtimeUrl='http://127.0.0.1:11438';
 let controller,gateway,window,proxy,browserProxy,systemRouting,authority,providerSession,tray,quitting=false,quitComplete=false,policyBusy=false,proxyWork=Promise.resolve(),runtime=null,timers=[];
@@ -36,8 +38,13 @@ async function runtimeStatus(){try{const r=await fetch(runtimeUrl+'/api/tags',{s
 async function startRuntime(){
   const status=await runtimeStatus();if(status.ready)return;
   const directory=app.isPackaged?join(process.resourcesPath,'ollama'):join(here,'runtime');
-  runtime=spawn(join(directory,process.platform==='win32'?'ollama.exe':'ollama'),['serve'],{cwd:directory,env:{...process.env,OLLAMA_HOST:'127.0.0.1:11438',OLLAMA_MODELS:join(app.getPath('userData'),'models'),OLLAMA_NO_CLOUD:'1',OLLAMA_DEBUG_LOG_REQUESTS:'false',OLLAMA_KEEP_ALIVE:'2m'},stdio:'ignore'});
+  runtime=spawn(join(directory,process.platform==='win32'?'ollama.exe':'ollama'),['serve'],{cwd:directory,windowsHide:true,env:{...process.env,OLLAMA_HOST:'127.0.0.1:11438',OLLAMA_MODELS:join(app.getPath('userData'),'models'),OLLAMA_NO_CLOUD:'1',OLLAMA_DEBUG_LOG_REQUESTS:'false',OLLAMA_KEEP_ALIVE:'2m'},stdio:'ignore'});
   runtime.on('error',()=>push());runtime.on('exit',()=>{runtime=null;push();});
+}
+async function stopRuntime(){
+  const owned=runtime;if(!owned?.pid)return;
+  if(process.platform==='win32')await new Promise(resolve=>execFile('taskkill.exe',['/PID',String(owned.pid),'/T','/F'],{windowsHide:true,timeout:10000},()=>resolve()));
+  else owned.kill();
 }
 async function snapshot(){return {...controller.publicState(),runtime:await runtimeStatus(),gatewayActive:!!gateway.server,gatewayUrl:'http://127.0.0.1:11436',gatewayKey:gateway.key,startAtLogin:app.getLoginItemSettings().openAtLogin,localConversation,captureCoverage:['Chat de Usovia','API local configurada','Navegador IA de Usovia','CLI configurada con proxy',...((await systemRouting?.status())?.active?['Navegadores con proxy y CA del sistema']:[])],proxyActive:!!proxy?.server,proxyUrl:proxy?.url||null,caPath:authority?.publicPath||null,caFingerprint:authority?.fingerprint||null,proxyStats:proxy?.stats||null,systemBrowser:systemRouting?await systemRouting.status():{supported:process.platform==='darwin',active:false,phase:'off'},browserProxyStats:browserProxy?.stats||null,providerCatalog,version:app.getVersion(),hubDefault:process.env.USOVIA_HUB_URL||'https://usovia-hub-demo.vercel.app'};}
 async function push(){updateTray();const target=window;if(!target||target.isDestroyed())return;const value=await snapshot();if(!target.isDestroyed()&&!target.webContents.isDestroyed())target.webContents.send('usovia:state',value);}
@@ -114,20 +121,11 @@ async function openAiBrowser(id){
   browser.webContents.setWindowOpenHandler(()=>({action:'deny'}));browser.webContents.on('will-navigate',(event,url)=>{try{if(new URL(url).protocol!=='https:')event.preventDefault();}catch{event.preventDefault();}});
   browser.once('closed',()=>browsers.delete(browser));await browser.loadURL('https://gemini.google.com/app');
 }
-const shellQuote=value=>"'"+value.replaceAll("'", "'\\''")+"'";
 async function createCliLauncher(){
   if(!controller.state.consent.capture||!proxy?.server)throw new Error('Activa el proxy antes de crear el lanzador.');
-  const file=join(app.getPath('userData'),'Gemini con Usovia.command');
-  const script=['#!/bin/sh','# Proxy y CA exclusivos de este proceso. Al pausar Usovia, el lanzador deja de conectar.',
-    'export HTTPS_PROXY='+shellQuote(proxy.url),'export HTTP_PROXY="$HTTPS_PROXY"','export NODE_EXTRA_CA_CERTS='+shellQuote(authority.publicPath),'export NODE_USE_ENV_PROXY=1',
-    'unset ALL_PROXY all_proxy http_proxy https_proxy NO_PROXY no_proxy NODE_TLS_REJECT_UNAUTHORIZED SSLKEYLOGFILE',
-    'export USOVIA_NODE='+shellQuote(process.execPath),
-    'export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"',
-    'if ! command -v gemini >/dev/null 2>&1; then echo "Instala Gemini CLI para usar este lanzador."; exit 1; fi',
-    'GEMINI_ENTRY=$(command -v gemini)',
-    'export ELECTRON_RUN_AS_NODE=1',
-    'exec "$USOVIA_NODE" '+shellQuote(app.isPackaged?join(process.resourcesPath,'shared/cli-entry.mjs'):join(here,'../shared/cli-entry.mjs'))+' "$GEMINI_ENTRY" "$@"',''].join('\n');
-  await writeFile(file,script,{mode:0o700});await shell.showItemInFolder(file);return {path:file};
+  const launcher=cliLauncher({platform:process.platform,proxyUrl:proxy.url,caPath:authority.publicPath,executable:process.execPath,entry:app.isPackaged?join(process.resourcesPath,'shared/cli-entry.mjs'):join(here,'../shared/cli-entry.mjs')});
+  const file=join(app.getPath('userData'),launcher.name);
+  await writeFile(file,launcher.content,{mode:0o700});shell.showItemInFolder(file);return {path:file};
 }
 const actions={
   state:()=>snapshot(),
@@ -205,6 +203,11 @@ app.whenReady().then(async()=>{
   window.on('close',event=>{if(!quitting){event.preventDefault();window.hide();app.dock?.hide();}});
   const icon=nativeImage.createFromPath(join(here,'ui/app-icon.png')).resize({width:18,height:18});tray=new Tray(icon);updateTray();if(process.platform!=='darwin')tray.on('click',showWindow);
   const ui=join(here,'ui/index.html');await window.loadFile(ui);if(process.argv.includes('--background')||app.getLoginItemSettings().wasOpenedAtLogin){window.hide();app.dock?.hide();}
+  if(process.argv.includes('--packaging-smoke')&&process.env.USOVIA_SMOKE_OUTPUT){
+    try{await (await import('./smoke.mjs')).smoke({app,window,tray,safeStorage,snapshot,save,load,runtimeRequest,actions,output:process.env.USOVIA_SMOKE_OUTPUT});}
+    catch(error){await writeFile(process.env.USOVIA_SMOKE_OUTPUT,JSON.stringify({ok:false,error:error.message}));process.exitCode=1;}
+    app.quit();return;
+  }
   timers.push(setInterval(async()=>{await controller.flush();await controller.heartbeat({gatewayActive:!!gateway.server,proxyActive:!!proxy?.server,systemBrowserActive:!!(await systemRouting?.status())?.active,policyRevision:controller.state.providerPolicy?.revision,ollamaReady:(await runtimeStatus()).ready});await push();},30000));
   timers.push(setInterval(push,5000));
   timers.push(setInterval(async()=>{
@@ -220,5 +223,5 @@ app.whenReady().then(async()=>{
 app.on('activate',showWindow);
 app.on('before-quit',event=>{
   quitting=true;if(quitComplete)return;event.preventDefault();timers.forEach(clearInterval);for(const c of activeChats)c.abort();
-  Promise.allSettled([gateway?.stop(),stopProxy()]).then(async()=>{await systemRouting?.stop();runtime?.kill();quitComplete=true;app.quit();});
+  Promise.allSettled([gateway?.stop(),stopProxy()]).then(async()=>{await systemRouting?.stop();await stopRuntime();quitComplete=true;app.quit();});
 });
