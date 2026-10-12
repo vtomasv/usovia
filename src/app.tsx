@@ -553,10 +553,10 @@ export function App() {
                   <strong>Cobertura del cliente publicado:</strong> chat y API local, Gemini en el
                   navegador de Usovia y API/CLI configuradas con su proxy TLS. Los proveedores y
                   rutas de generación se habilitan en la central. Los navegadores que usan proxy y
-                  certificados de macOS pueden integrarse con autorización local en el cliente 1.1.
-                  Windows 1.3 incorpora una integración autorizada para los navegadores que usan el
-                  proxy y la confianza TLS del sistema. La captura web está disponible para Gemini;
-                  ChatGPT y Claude web requieren adaptadores adicionales.
+                  certificados de macOS pueden integrarse con autorización local en el cliente para
+                  Mac. Windows 1.3 incorpora una integración autorizada para los navegadores que
+                  usan el proxy y la confianza TLS del sistema. La captura web está disponible para
+                  Gemini; ChatGPT y Claude web requieren adaptadores adicionales.
                 </p>
               </div>
             </>
