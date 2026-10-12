@@ -54,7 +54,7 @@ npm test
 npm run build
 ```
 
-En Linux, las pruebas no ejecutan el ayudante nativo de macOS. En macOS, compílalo antes de las pruebas con `npm run build:browser-helper --workspace @usovia/desktop`.
+En Linux, se omiten explícitamente dos pruebas que requieren el servicio y el ayudante nativos de macOS; las otras 66 validan lógica, API, permisos, sesiones y proxy TLS. En macOS, compílalo antes de las pruebas con `npm run build:browser-helper --workspace @usovia/desktop`.
 
 ## Cliente de escritorio
 

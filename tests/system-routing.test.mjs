@@ -23,7 +23,7 @@ test('pause produces DIRECT PAC, changes from central stay within the fixed cata
   assert.equal(evaluate(policy)('https://gemini.google.com/','gemini.google.com'),'DIRECT');
   policy.endpoints.push({id:'evil',url:'https://bank.example/',enabled:true});assert.throws(()=>selectivePac(policy,11442));assert.throws(()=>selectivePac(defaultPolicy(),0));
 });
-test('PAC service, lease and installer contain no private key, upstream keys or installation token',async t=>{
+test('PAC service, lease and installer contain no private key, upstream keys or installation token',{skip:process.platform!=='darwin'?'macOS-only routing service':false},async t=>{
   const directory=await mkdtemp(join(tmpdir(),'usovia-routing-'));t.after(()=>rm(directory,{recursive:true,force:true}));
   const routing=new SystemRouting({directory,helper:'/a path/with\'quote/helper',policy:defaultPolicy(),port:0});
   t.after(()=>routing.stop());await routing.start();let r=await fetch(routing.pacUrl);assert.equal(r.status,200);assert.equal(r.headers.get('content-type'),'application/x-ns-proxy-autoconfig');assert.ok((await r.text()).includes('var hosts = []'));
@@ -39,8 +39,7 @@ test('PAC service, lease and installer contain no private key, upstream keys or 
   await assert.rejects(routing.updatePolicy(defaultPolicy()),/anterior/);
   await routing.stop();const closed=JSON.parse(await readFile(manifest.leasePath,'utf8'));assert.equal(closed.active,false);assert.equal(closed.closed,true);
 });
-test('native helper restores prior dictionaries, preserves foreign edits and rejects active corporate proxies',()=>{
-  if(process.platform!=='darwin')return;
+test('native helper restores prior dictionaries, preserves foreign edits and rejects active corporate proxies',{skip:process.platform!=='darwin'?'requires compiled macOS helper':false},()=>{
   const result=JSON.parse(execFileSync(new URL('../desktop/native/bin/usovia-browser-helper',import.meta.url).pathname,['self-test'],{encoding:'utf8'}));assert.equal(result.selfTest,'passed');assert.equal(result.cases,7);
   assert.throws(()=>execFileSync(new URL('../desktop/native/bin/usovia-browser-helper',import.meta.url).pathname,['run','/nonexistent'],{stdio:'pipe'}));
 });

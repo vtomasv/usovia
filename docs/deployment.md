@@ -6,6 +6,8 @@ El Hub se despliega con la integración Git nativa de Vercel. No se guardan toke
 
 1. Un push a `main` ejecuta GitHub Actions: instalación desde el lockfile, TypeScript, pruebas de API/proxy/consentimiento, auditoría de dependencias de producción y build.
 2. Vercel recibe el mismo commit desde GitHub. Su build vuelve a ejecutar TypeScript y pruebas antes de crear la nueva versión de producción. Por tanto, un fallo de esas comprobaciones impide publicar ese build, aunque Actions y Vercel se ejecuten en paralelo. La auditoría de Actions es una comprobación adicional; no es una dependencia entre ambos sistemas.
+En Linux se ejecutan 66 pruebas y se omiten explícitamente las dos que requieren macOS. Las pruebas se ejecutan sin credenciales de servicios heredadas y el runner falla si no hay archivos de prueba.
+
 3. Solo `main` genera despliegues automáticos. Las demás ramas tienen despliegue desactivado mediante `git.deploymentEnabled`: las variables heredadas del proyecto incluyen acceso a la base de producción, por lo que no se publican previews con esa configuración. Antes de habilitar previews, prepara una base y secretos independientes, y elimina de ese entorno todas las credenciales de producción. No ejecutes código de PR no confiables con ellas.
 4. Un despliegue fallido conserva el anterior. Para revertir, promueve un despliegue anterior desde Vercel y revierte el commit en Git con una nueva confirmación revisable.
 
