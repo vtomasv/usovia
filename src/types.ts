@@ -59,6 +59,7 @@ export type DesktopArtifact = {
   sha256?: string | null;
   bytes?: number;
   signed: boolean;
+  notarized?: boolean;
   systemBrowser?: boolean;
 };
 export type Config = {

@@ -149,6 +149,9 @@ export function DesktopDownload({
               Valida su uso con TI y respeta las políticas de tu empresa.
             </p>
           )}
+          {selected.os === 'macos' && selected.signed && selected.notarized && (
+            <p className="dd-signing">Firmado con Developer ID y notarizado por Apple.</p>
+          )}
           {selected.os === 'windows' && (
             <p className="dd-coverage">
               {selected.systemBrowser

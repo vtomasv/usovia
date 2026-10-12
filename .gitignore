@@ -24,6 +24,7 @@ skills-lock.json
 *.key
 *.p12
 *.pfx
+*.p8
 
 desktop/native/bin/
 

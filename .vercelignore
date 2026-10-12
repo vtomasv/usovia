@@ -3,6 +3,10 @@ desktop/node_modules
 desktop/runtime
 desktop/runtime-windows
 desktop/release
+desktop/release*/
+*.p8
+*.p12
+*.pfx
 desktop/ui/app-icon.iconset
 .runtime
 .vercel-cli

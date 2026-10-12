@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {cliLauncher} from './cli-launcher.mjs';
 export async function smoke({app, window, tray, safeStorage, snapshot, save, load, runtimeRequest, actions, output}) {
   assert.equal(app.isPackaged, true);
-  assert.equal(process.platform, 'win32');
+  assert.ok(['win32', 'darwin'].includes(process.platform));
   assert.equal(safeStorage.isEncryptionAvailable(), true);
   const encrypted = safeStorage.encryptString('synthetic-packaging-check');
   assert.equal(safeStorage.decryptString(encrypted), 'synthetic-packaging-check');
@@ -29,9 +29,9 @@ export async function smoke({app, window, tray, safeStorage, snapshot, save, loa
   const chat = await actions.chat({model: 'qwen2.5:0.5b', prompt: 'Responde brevemente: ¿cuánto es dos más dos?'});
   assert.ok(chat.response?.length > 0, 'CPU model must generate a real answer');
   const manifest = JSON.parse(await readFile(join(process.resourcesPath, 'ollama/runtime-manifest.json'), 'utf8'));
-  assert.equal(manifest.platform, 'win32-x64');
-  assert.equal(manifest.acceleration, 'cpu');
-  const launcher = cliLauncher({platform: process.platform, proxyUrl: 'http://127.0.0.1:11440', caPath: 'C:\\example\\root.pem', executable: process.execPath, entry: 'C:\\example\\cli-entry.mjs'});
-  assert.equal(launcher.name.endsWith('.cmd'), true);
+  assert.equal(manifest.platform, process.platform === 'win32' ? 'win32-x64' : 'darwin-arm64');
+  if (process.platform === 'win32') assert.equal(manifest.acceleration, 'cpu');
+  const launcher = cliLauncher({platform: process.platform, proxyUrl: 'http://127.0.0.1:11440', caPath: '/example/root.pem', executable: process.execPath, entry: '/example/cli-entry.mjs'});
+  assert.equal(launcher.name.endsWith(process.platform === 'win32' ? '.cmd' : '.command'), true);
   await writeFile(output, JSON.stringify({ok: true, platform: process.platform, arch: process.arch, packaged: true, tray: true, encryptedStateRoundtrip: true, closeKeepsTray: true, rendererBridge: true, defaultCapture: false, systemBrowserSupported: true, ollamaVersion: manifest.version, realLocalInference: true, responseCharacters: chat.response.length}, null, 2));
 }

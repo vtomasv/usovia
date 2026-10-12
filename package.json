@@ -10,6 +10,7 @@
     "test": "node scripts/test.mjs",
     "desktop:dev": "npm run start --workspace @usovia/desktop",
     "desktop:package": "npm run package --workspace @usovia/desktop",
+    "desktop:package:signed": "node scripts/package-macos-signed.mjs",
     "db:init": "node scripts/db-init.mjs",
     "deploy": "vercel --prod",
     "vercel:login": "vercel login",
