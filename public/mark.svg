@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Icono de Usovia</title>
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="#152C35"/>
+  <g transform="translate(64 64) scale(3)" fill="none" stroke="#77DFC0" stroke-width="14" stroke-linecap="round">
+    <path d="M28 24V60C28 84 44 100 64 100S100 84 100 60V48"/>
+  </g>
+  <circle cx="364" cy="136" r="24" fill="#77DFC0"/>
+  <circle cx="256" cy="196" r="27" fill="#E2F7ED"/>
+</svg>

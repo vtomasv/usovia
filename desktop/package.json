@@ -1,0 +1,71 @@
+{
+  "name": "@usovia/desktop",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Gobierno corporativo de IA con participaci\u00f3n autorizada",
+  "author": "Usovia",
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "package": "npm run build:browser-helper && electron-builder --mac zip dmg --arm64",
+    "build:browser-helper": "node ../scripts/build-browser-helper.mjs"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "app.usovia.desktop",
+    "productName": "Usovia",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "*.mjs",
+      "*.cjs",
+      "ui/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime",
+        "to": "ollama",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../shared",
+        "to": "shared",
+        "filter": [
+          "analysis.mjs",
+          "providers.mjs",
+          "cli-entry.mjs"
+        ]
+      },
+      {
+        "from": "native/bin",
+        "to": "browser-helper",
+        "filter": [
+          "usovia-browser-helper"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "icon": "ui/app-icon.png",
+      "target": [
+        "zip",
+        "dmg"
+      ]
+    },
+    "artifactName": "Usovia-${version}-${arch}.${ext}"
+  },
+  "dependencies": {
+    "@peculiar/x509": "^2.1.0",
+    "reflect-metadata": "^0.2.2"
+  }
+}

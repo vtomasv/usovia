@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="160" viewBox="0 0 600 160" role="img" aria-labelledby="title desc">
+  <title id="title">Usovia</title><desc id="desc">Una U abierta y dos nodos representan el uso de IA y la participación voluntaria.</desc>
+  <g transform="translate(12 16)" fill="none" stroke="#158575" stroke-width="14" stroke-linecap="round">
+    <path d="M28 24V60C28 84 44 100 64 100S100 84 100 60V48"/>
+  </g>
+  <circle cx="112" cy="40" r="8" fill="#158575"/>
+  <circle cx="76" cy="60" r="9" fill="#8EDDC6"/>
+  <text x="160" y="106" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="700" letter-spacing="-3" fill="#152C35">usovia</text>
+</svg>
