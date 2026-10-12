@@ -13,7 +13,7 @@ En Linux se ejecutan 66 pruebas y se omiten explícitamente las dos que requiere
 
 ## Identidad
 
-Configura `git config user.name` con el usuario del propietario y `git config user.email vtomav@gmail.com` en este repositorio. Tanto autor como committer deben corresponder a la cuenta autorizada. El propietario de Vercel debe vincular su cuenta GitHub en sus métodos de autenticación. En Hobby, Vercel exige que el autor del commit sea el propietario del equipo; una identidad no reconocida puede impedir el despliegue. Eso no significa automáticamente que Vercel bloquee la cuenta.
+Configura `git config user.name vtomasv` y `git config user.email vtomasv@gmail.com` en este repositorio. Tanto autor como committer deben corresponder a la cuenta autorizada. El propietario de Vercel debe vincular su cuenta GitHub en sus métodos de autenticación. En Hobby, Vercel exige que el autor del commit sea el propietario del equipo; una identidad no reconocida puede impedir el despliegue. Eso no significa automáticamente que Vercel bloquee la cuenta.
 
 Referencias: [integración Git](https://vercel.com/docs/git), [colaboración e identidad](https://vercel.com/docs/deployments/troubleshoot-project-collaboration), [conexión por CLI](https://vercel.com/docs/cli/git).
 
@@ -27,7 +27,7 @@ Para conectar el proyecto existente con autorización del propietario:
 
 ```sh
 npx vercel link
-npx vercel git connect https://github.com/PROPIETARIO/usovia.git
+npx vercel git connect https://github.com/vtomasv/usovia.git
 ```
 
 No uses una cuenta GitHub distinta ni cambies el correo a uno ajeno para eludir las reglas. Verifica en el primer despliegue que `VERCEL_GIT_COMMIT_SHA` corresponde al commit publicado y que GitHub reconoce su autor.
